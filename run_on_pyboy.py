@@ -1,12 +1,11 @@
 
 
 from pyboy import PyBoy
+from config import ROM_PATH  # Import ROM_PATH from config
 
-# Path to your Game Boy ROM file
-rom_path = "red.gb"  # Replace with the path to your ROM file
 
 # Create a PyBoy instance with the ROM
-pyboy = PyBoy(rom_path)
+pyboy = PyBoy(ROM_PATH)
 
 try:
     # Main loop to run the emulator
