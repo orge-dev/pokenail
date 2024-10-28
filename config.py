@@ -1,2 +1,2 @@
 ROM_PATH = "red.gb"
-
+EMULATION_SPEED = 5
