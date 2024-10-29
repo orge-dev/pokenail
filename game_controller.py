@@ -21,18 +21,17 @@ class GameController:
         
         self.pyboy.set_emulation_speed(emulation_speed)  # Set the emulation speed
 
-    def start(self):
-        """Start the emulator and run the main loop."""
+    def step(self):
+        """Step the emulator."""
         try:
-            while True:
-                if not self.pyboy.tick():  # Update the emulator state
-                    break  # Exit if the emulator signals to stop
+            return self.pyboy.tick()  # Returns whether the emulator is still running
         except KeyboardInterrupt:
             logging.info("Emulation interrupted by user.")
         except Exception as e:
             logging.error(f"Error during update: {e}")
         finally:
             self.close()
+            return False
 
     def save_state(self, state_filename="game_state.save"):
         with open(state_filename, "wb") as f:
@@ -79,10 +78,20 @@ class GameController:
             "RIGHT": lambda: self.pyboy.button_release('right'),
         }
 
+        button_hold_ticks = 20
+        button_release_ticks = 2
+
         # Perform the action based on the input
         if action in action_map:
             func_action = action_map[action]
             func_action()
+
+            self.pyboy.tick(button_hold_ticks)
+
+            end_func_action = action_map_release[action]
+            end_func_action()
+            self.pyboy.tick(button_release_ticks)
+
             logging.info(f"Performed action: {action}")
         else:
             logging.warning(f"Unknown action: {action}")
