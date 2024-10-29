@@ -56,20 +56,33 @@ class GameController:
     def perform_action(self, action):
         """Perform the action given by the AI agent."""
         # Define the mapping of actions to button presses
+        print(f'the action is {action}')
         action_map = {
-            "A": self.pyboy.press_button("A"),
-            "B": self.pyboy.press_button("B"),
-            "START": self.pyboy.press_button("START"),
-            "SELECT": self.pyboy.press_button("SELECT"),
-            "UP": self.pyboy.press_button("UP"),
-            "DOWN": self.pyboy.press_button("DOWN"),
-            "LEFT": self.pyboy.press_button("LEFT"),
-            "RIGHT": self.pyboy.press_button("RIGHT"),
+            "A": lambda: self.pyboy.button_press('a'),
+            "B": lambda: self.pyboy.button_press('b'),
+            "START": lambda: self.pyboy.button_press('start'),
+            "SELECT": lambda: self.pyboy.button_press('select'),
+            "UP": lambda: self.pyboy.button_press('up'),
+            "DOWN": lambda: self.pyboy.button_press('down'),
+            "LEFT": lambda: self.pyboy.button_press('left'),
+            "RIGHT": lambda: self.pyboy.button_press('right'),
+        }
+
+        action_map_release = {
+            "A": lambda: self.pyboy.button_release('a'),
+            "B": lambda: self.pyboy.button_release('b'),
+            "START": lambda: self.pyboy.button_release('start'),
+            "SELECT": lambda: self.pyboy.button_release('select'),
+            "UP": lambda: self.pyboy.button_release('up'),
+            "DOWN": lambda: self.pyboy.button_release('down'),
+            "LEFT": lambda: self.pyboy.button_release('left'),
+            "RIGHT": lambda: self.pyboy.button_release('right'),
         }
 
         # Perform the action based on the input
         if action in action_map:
-            action_map[action]
+            func_action = action_map[action]
+            func_action()
             logging.info(f"Performed action: {action}")
         else:
             logging.warning(f"Unknown action: {action}")
