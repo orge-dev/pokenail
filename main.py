@@ -23,15 +23,15 @@ def main():
             
             # Perform action based on AI's decision
             controller.perform_action(action)  # Implement this method
-            
+            #controller.perform_action_a(action)
             # Start the game loop
             still_running = controller.step()
 
     except KeyboardInterrupt:
         print("Program interrupted. Stopping emulator...")
     finally:
-        controller.save_state()  # Save the state before closing
-        controller.close()  # Close the emulator
+         controller.save_state()  # Save the state before closing
+         controller.close()  # Close the emulator
 
 if __name__ == "__main__":
     main()

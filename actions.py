@@ -6,8 +6,8 @@ class Actions(Enum):
     DOWN = 'DOWN'
     LEFT = 'LEFT'
     RIGHT = 'RIGHT'
-    ACTION1 = 'A_BUTTON'  # Replace with actual action name
-    ACTION2 = 'B_BUTTON'  # Replace with actual action name
+    ACTION1 = 'A'  # Replace with actual action name
+    ACTION2 = 'B'  # Replace with actual action name
 
     @classmethod
     def list(cls):
