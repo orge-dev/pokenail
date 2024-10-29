@@ -23,15 +23,7 @@ class GameController:
 
     def step(self):
         """Step the emulator."""
-        try:
-            return self.pyboy.tick()  # Returns whether the emulator is still running
-        except KeyboardInterrupt:
-            logging.info("Emulation interrupted by user.")
-        except Exception as e:
-            logging.error(f"Error during update: {e}")
-        finally:
-            self.close()
-            return False
+        return self.pyboy.tick()  # Returns whether the emulator is still running
 
     def save_state(self, state_filename="game_state.save"):
         with open(state_filename, "wb") as f:
