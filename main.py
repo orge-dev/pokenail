@@ -11,8 +11,10 @@ def main():
     # Load the saved state before starting the game
     controller.load_state()  
 
+    still_running = True
+
     try:    
-        while True:
+        while still_running:
             # Update game state
             state = controller.update()  # Implement this method in GameController
             
@@ -23,7 +25,7 @@ def main():
             controller.perform_action(action)  # Implement this method
             
             # Start the game loop
-            controller.start()
+            still_running = controller.step()
 
     except KeyboardInterrupt:
         print("Program interrupted. Stopping emulator...")
