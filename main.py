@@ -19,8 +19,12 @@ def main():
             state = controller.update()  # Implement this method in GameController
             
             # Get a random action
-            action = random.choice(Actions.list())  # Randomly select an action
-            
+            #action = random.choice(Actions.list())  # Randomly select an action
+            action = ai_agent.select_action(state)  # Choose action based on current policy
+
+
+            #insert ai agent code
+
             # Perform action based on AI's decision
             controller.perform_action(action)  # Implement this method
             #controller.perform_action_a(action)
