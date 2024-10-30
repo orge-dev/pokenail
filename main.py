@@ -1,12 +1,13 @@
 import random
 from game_controller import GameController
 from actions import Actions  # Import the Actions enum
+from ai_agent import AIAgent
 # from ai_agent import AIAgent  # Uncomment this when you have the AIAgent defined
 from config import ROM_PATH, EMULATION_SPEED  # Ensure these are correctly defined in config
 
 def main():
     controller = GameController(ROM_PATH, EMULATION_SPEED)  # Initialize the controller
-    # ai_agent = AIAgent()  # Uncomment and define when ready
+    ai_agent = AIAgent()  # Uncomment and define when ready
 
     # Load the saved state before starting the game
     controller.load_state()  

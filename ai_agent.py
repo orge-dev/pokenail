@@ -20,7 +20,8 @@ class AIAgent:
 
     def select_action(self, state):
         # Epsilon-greedy action selection
-        if random.random() < self.exploration_rate:
+        # if random.random() < self.exploration_rate:
+        if random.random() < .5:
             return random.choice(Actions.list())  # Explore: random action
         else:
             action_index = np.argmax(self.q_table[state])  # Get the index of the best action
