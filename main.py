@@ -1,42 +1,38 @@
 import random
-from game_controller import GameController
 from actions import Actions  # Import the Actions enum
 from ai_agent import AIAgent
-# from ai_agent import AIAgent  # Uncomment this when you have the AIAgent defined
-from config import ROM_PATH, EMULATION_SPEED  # Ensure these are correctly defined in config
+from config import ROM_PATH, EMULATION_SPEED, MAX_STEPS
+from env import env_red  # Use env_red as the environment
 
 def main():
-    controller = GameController(ROM_PATH, EMULATION_SPEED)  # Initialize the controller
-    ai_agent = AIAgent()  # Uncomment and define when ready
+    environment = env_red()  # Initialize the environment (which includes GameController)
+    ai_agent = AIAgent()  # Initialize your AI agent
 
-    # Load the saved state before starting the game
-    controller.load_state()  
-
-    still_running = True
+    # Reset the environment to get the initial state
+    state = environment.reset()
 
     try:    
-        while still_running:
-            # Update game state
-            state = controller.update()  # Implement this method in GameController
-            
-            # Get a random action
-            #action = random.choice(Actions.list())  # Randomly select an action
-            action = ai_agent.select_action(state)  # Choose action based on current policy
+        while True:
+            # Get an action from the AI agent based on the current state
+            action = ai_agent.select_action(state)
 
+            # Perform the action in the environment
+            next_state, reward, done, _ = environment.step(action)
 
-            #insert ai agent code
+            # Update the AI agent with the new experience (optional, for training)
+            ai_agent.update(state, action, reward, next_state)
 
-            # Perform action based on AI's decision
-            controller.perform_action(action)  # Implement this method
-            #controller.perform_action_a(action)
-            # Start the game loop
-            still_running = controller.step()
+            # Update state
+            state = next_state
+
+            # Check if the game is over
+            if done:
+                break
 
     except KeyboardInterrupt:
         print("Program interrupted. Stopping emulator...")
     finally:
-         controller.save_state()  # Save the state before closing
-         controller.close()  # Close the emulator
+        environment.close()  # Close the environment safely
 
 if __name__ == "__main__":
     main()

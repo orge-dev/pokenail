@@ -2,28 +2,17 @@
 
 import logging
 from pyboy import PyBoy
-from config import ROM_PATH, EMULATION_SPEED  # Make sure these are defined in config
+from config import ROM_PATH, EMULATION_SPEED  # Ensure these are defined in config
 
 logging.basicConfig(level=logging.INFO)
 
 class GameController:
     def __init__(self, rom_path, emulation_speed=1.0):
-        """
-        Initialize the GameController with a ROM path and emulation speed.
-        
-        Args:
-            rom_path (str): Path to the ROM file.
-            emulation_speed (float): Speed factor (1.0 = normal, >1.0 = faster, <1.0 = slower)
-        """
         self.pyboy = PyBoy(rom_path)
         if not self.pyboy:
             raise RuntimeError("Failed to initialize PyBoy with the given ROM.")
         
-        self.pyboy.set_emulation_speed(emulation_speed)  # Set the emulation speed
-
-    def step(self):
-        """Step the emulator."""
-        return self.pyboy.tick()  # Returns whether the emulator is still running
+        self.pyboy.set_emulation_speed(emulation_speed)
 
     def save_state(self, state_filename="game_state.save"):
         with open(state_filename, "wb") as f:
@@ -39,15 +28,7 @@ class GameController:
         self.pyboy.stop()
         logging.info("Emulator stopped.")
 
-    def update(self):
-        """Update the game state; implement your logic here."""
-        # Implement logic to retrieve and return game state
-        return {}
-
     def perform_action(self, action):
-        """Perform the action given by the AI agent."""
-        # Define the mapping of actions to button presses
-        print(f'the action is {action}')
         action_map = {
             "A": lambda: self.pyboy.button_press('a'),
             "B": lambda: self.pyboy.button_press('b'),
@@ -73,17 +54,20 @@ class GameController:
         button_hold_ticks = 20
         button_release_ticks = 2
 
-        # Perform the action based on the input
         if action in action_map:
             func_action = action_map[action]
             func_action()
-
             self.pyboy.tick(button_hold_ticks)
-
             end_func_action = action_map_release[action]
             end_func_action()
             self.pyboy.tick(button_release_ticks)
-
             logging.info(f"Performed action: {action}")
         else:
             logging.warning(f"Unknown action: {action}")
+
+    def update(self):
+        """Retrieve the current state of the game."""
+        # This example assumes a method to retrieve game state exists.
+        # You will need to replace `get_state_info` with the actual method to retrieve game state data
+        state = {}  # Replace with actual game state retrieval logic
+        return state
