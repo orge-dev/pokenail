@@ -32,11 +32,16 @@ def main():
         else:
             try:
              #pyboy = PyBoy(ROM_PATH)
+             #put the code to print location
              controller = GameController(ROM_PATH, EMULATION_SPEED)  
              controller.load_state()
+
+             #add print 
              while True:
- 
+              
+            
               if not controller.pyboy.tick():
+  
                break  # Exit if the emulator signals to stop
 
             except KeyboardInterrupt:
@@ -44,6 +49,7 @@ def main():
 
             finally:
                 # Clean up and close the emulator
+                controller.save_state()
                 pyboy.stop()
                     #else we want the user to input
 
