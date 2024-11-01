@@ -1,5 +1,3 @@
-
-
 from pyboy import PyBoy
 from config import ROM_PATH  # Import ROM_PATH from config
 

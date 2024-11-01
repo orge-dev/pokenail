@@ -1,19 +1,21 @@
-import random
-from actions import Actions
 from ai_agent import AIAgent
-from config import ROM_PATH, EMULATION_SPEED, MAX_STEPS
+from config import ROM_PATH, EMULATION_SPEED
 from game_controller import GameController
 from env import env_red
-import game_controller
 import argparse
+
 
 def main():
     # Initialize environment and AI agent
     environment = env_red()
     ai_agent = AIAgent()
     state = environment.reset()
-    parser = argparse.ArgumentParser(description="Run Pokémon Red with AI or manual control.")
-    parser.add_argument("--manual", action="store_true", help="Enable manual control mode.")
+    parser = argparse.ArgumentParser(
+        description="Run Pokémon Red with AI or manual control."
+    )
+    parser.add_argument(
+        "--manual", action="store_true", help="Enable manual control mode."
+    )
     args = parser.parse_args()
 
     try:
@@ -31,18 +33,15 @@ def main():
                     break
         else:
             try:
-             #pyboy = PyBoy(ROM_PATH)
-             #put the code to print location
-             controller = GameController(ROM_PATH, EMULATION_SPEED)  
-             controller.load_state()
+                # pyboy = PyBoy(ROM_PATH)
+                # put the code to print location
+                controller = GameController(ROM_PATH, EMULATION_SPEED)
+                controller.load_state()
 
-             #add print 
-             while True:
-              
-            
-              if not controller.pyboy.tick():
-  
-               break  # Exit if the emulator signals to stop
+                # add print
+                while True:
+                    if not controller.pyboy.tick():
+                        break  # Exit if the emulator signals to stop
 
             except KeyboardInterrupt:
                 print("Program interrupted. Stopping emulator...")
@@ -50,14 +49,13 @@ def main():
             finally:
                 # Clean up and close the emulator
                 controller.save_state()
-                pyboy.stop()
-                    #else we want the user to input
-
+                controller.close()
 
     except KeyboardInterrupt:
         print("Program interrupted. Stopping emulator...")
     finally:
         environment.close()
+
 
 if __name__ == "__main__":
     main()

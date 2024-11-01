@@ -1,4 +1,3 @@
-import random
 import numpy as np
 import pickle
 from collections import defaultdict
@@ -6,8 +5,16 @@ from actions import Actions  # Ensure Actions enum is imported
 from env import env_red  # Import your environment
 import logging
 
+
 class AIAgent:
-    def __init__(self, learning_rate=0.1, discount_factor=0.9, exploration_rate=1.0, exploration_decay=0.995, min_exploration_rate=0.01):
+    def __init__(
+        self,
+        learning_rate=0.1,
+        discount_factor=0.9,
+        exploration_rate=1.0,
+        exploration_decay=0.995,
+        min_exploration_rate=0.01,
+    ):
         num_actions = len(Actions.list())
         self.q_table = defaultdict(lambda: np.zeros(num_actions))
         self.learning_rate = learning_rate
@@ -29,7 +36,9 @@ class AIAgent:
         best_next_action_value = np.max(self.q_table[next_state])
 
         self.q_table[state][action_index] += self.learning_rate * (
-            reward + self.discount_factor * best_next_action_value - self.q_table[state][action_index]
+            reward
+            + self.discount_factor * best_next_action_value
+            - self.q_table[state][action_index]
         )
 
         if self.exploration_rate > self.min_exploration_rate:
@@ -57,7 +66,9 @@ class AIAgent:
     def load_q_table(self, filename="q_table.pkl"):
         """Loads the Q-table from a file."""
         with open(filename, "rb") as file:
-            self.q_table = defaultdict(lambda: np.zeros(len(Actions.list())), pickle.load(file))
+            self.q_table = defaultdict(
+                lambda: np.zeros(len(Actions.list())), pickle.load(file)
+            )
 
 
 # Training Loop
