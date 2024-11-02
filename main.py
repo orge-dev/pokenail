@@ -14,7 +14,7 @@ def run_ai_mode(checkpoint=None):
     environment = env_red()
     # Uncomment this to start the run from a checkpoint instead of an empty q table
     #checkpoint="checkpoints/agent_state_20241101_173109_ahuDmaYL.pkl"
-
+    environment.reset() 
     ai_agent = AIAgent()
     if checkpoint is not None:
         ai_agent.load_state(checkpoint)
@@ -29,36 +29,35 @@ def run_ai_mode(checkpoint=None):
             ai_agent.save_state(f"checkpoints/agent_state_{episode_id}.pkl")
         action = ai_agent.select_action(state)
         environment.controller.perform_action(action)
-        next_state, reward, done, _ = environment.step()
+        next_state, reward, done, _ = environment.step(action, False)
         print(f"{next_state=}, {reward=}, {done=}")
-        ai_agent.update(state, action, reward, next_state)
         state = next_state
         if done:
             break
 
+
 def run_manual_mode():
     environment = env_red()
+    environment.reset()  # Ensure previous_state is initialized
     controller = environment.controller
     try:
         controller.load_state()
         still_running = True
         while still_running:
-
-            next_state, reward, done, _ = environment.step()
+            # Call step without an action, only in manual mode
+            next_state, reward, done, _ = environment.step(manual=True)
             print(f"{next_state=}, {reward=}, {done=}")
-
             still_running = not done
-
             position = controller.get_global_coords()
             print(f"manual {position=}")
-
     finally:
         controller.save_state()
         controller.close()
 
+
 def main():
     args = parse_arguments()
-    
+    environment = env_red()
     try:
         if args.manual:
             run_manual_mode()
