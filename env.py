@@ -40,6 +40,8 @@ class env_red(AbstractEnvironment):
         self.learning_rate = learning_rate
         self.discount_factor = discount_factor
         self.visited_coords = set()  # Track visited coordinates
+        self.battle = False
+
    
     def reset(self):
         self.controller.load_state()
@@ -47,6 +49,7 @@ class env_red(AbstractEnvironment):
         initial_state = {
             "position": position,
             "in_battle": False,
+            "exploration_reward": 0,
         }
         self.previous_state = initial_state  # Initialize previous_state
         return initial_state
@@ -54,27 +57,35 @@ class env_red(AbstractEnvironment):
 
     def step(self, action=None, manual=False):
         """Execute a step in the environment, optionally with manual control."""
+       
         if not manual and action is not None:
             # Perform the action only if not in manual mode and an action is provided
             self.controller.perform_action(action)
             
         self.controller.pyboy.tick()  # Advance the emulator state
-
+        if self.controller.is_in_battle():
+            #updat the reward 
+            self.battle = True
         position = self.controller.get_global_coords()
         next_state = {
-            "position": position,
-            
+            "position": position,      
             "exploration_reward": self.calculate_exploration_reward(position),
+            "battle": self.battle,
         }
         reward = 1  # Replace with actual reward calculation
         done = False  # Set to True if the episode ends
 
         # Update the Q-table only in automated mode
+        # print(f'the previous stae {self.previous_state['exploration_reward']}')
+        if self.previous_state['exploration_reward'] != next_state["exploration_reward"]:
+           print(f'next is {next_state}')
         if not manual:
             self.update_q_table(self.previous_state, action, next_state, reward)
-        
+
+
         self.previous_state = next_state  # Update previous state
 
+        
         return next_state, reward, done, {}
     
     def calculate_exploration_reward(self, position):
