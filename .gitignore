@@ -1,4 +1,8 @@
 red.gb.ram
+notes.org
+agent_state.pkl
+episodes2
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

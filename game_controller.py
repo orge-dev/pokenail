@@ -6,8 +6,11 @@ logging.basicConfig(level=logging.INFO)
 
 
 class GameController:
-    def __init__(self, rom_path, emulation_speed=1.0):
-        self.pyboy = PyBoy(rom_path)
+    def __init__(self, rom_path, emulation_speed=1.0, headless=False):
+        # Does this work cross platform?
+        self.pyboy = PyBoy(
+            rom_path, window="null" if headless else "SDL2", debug=False
+        )
         if not self.pyboy:
             raise RuntimeError("Failed to initialize PyBoy with the given ROM.")
 
@@ -69,7 +72,7 @@ class GameController:
         if action in action_map:
             button = action_map[action]
             self._press_button(button, hold_ticks=20, release_ticks=2)
-            #logging.info("Performed action: %s", action)
+            # logging.info("Performed action: %s", action)
         else:
             raise ValueError(f"Unknown action: {action}")
 

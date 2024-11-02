@@ -9,6 +9,7 @@ from collections import defaultdict
 from actions import (
     Actions,
 )  # Replace `actions` with the actual module name if different
+from replay_buffer import ReplayBuffer
 
 
 class AbstractEnvironment(ABC):
@@ -31,8 +32,8 @@ class AbstractEnvironment(ABC):
 
 
 class env_red(AbstractEnvironment):
-    def __init__(self, learning_rate=0.05, discount_factor=0.9):
-        self.controller = GameController(ROM_PATH, EMULATION_SPEED)
+    def __init__(self, learning_rate=0.05, discount_factor=0.9, headless=False):
+        self.controller = GameController(ROM_PATH, EMULATION_SPEED, headless=headless)
         self.q_table = defaultdict(lambda: np.zeros(len(Actions.list())))
         self.learning_rate = learning_rate
         self.discount_factor = discount_factor
@@ -42,30 +43,43 @@ class env_red(AbstractEnvironment):
     def reset(self):
         self.controller.load_state()
 
-        self.visited_coords = set()  # Track visited coordinates
+        # Maybe group these as a subclass
+        self.replay_buffer = ReplayBuffer()
+        self.visited_coords = set()
         self.battle = self.controller.is_in_battle()
         self.battle_reward_applied = False
         self.current_step = 0
-        self.total_reward = 0  # Track total reward for episode
+        self.total_reward = 0
         self.steps_to_battle = None
         self.last_distance_reward = None
+        self.position = self.controller.get_global_coords()
 
-        position = self.controller.get_global_coords()
         initial_state = {
-            "position": position,
+            "position": self.position,
             "battle": self.battle,
         }
         self.previous_state = initial_state
         return initial_state
 
+    def calculate_distance_metrics(self, position):
+        target_position = (309, 99)
+        distance = np.sqrt(
+            (position[0] - target_position[0]) ** 2
+            + (position[1] - target_position[1]) ** 2
+        )
+        if distance > 20:
+            distance_reward = 0.0
+        else:
+            distance_reward = 1000.0 / (distance + 1)
+        return distance, distance_reward
+
     def calculate_reward(self, position):
         position_tuple = tuple(position)
-        target_position = (309, 99)
 
         # Distance-based reward
-        current_distance = np.sqrt((position[0] - target_position[0])**2 + 
-                                (position[1] - target_position[1])**2)
-        distance_reward = 1000.0 / (current_distance + 1)  # Add 1 to avoid division by zero
+        current_distance, distance_reward = self.calculate_distance_metrics(
+            position_tuple
+        )
 
         # Print first distance reward or significant changes
         if self.last_distance_reward is None:
@@ -74,46 +88,36 @@ class env_red(AbstractEnvironment):
         else:
             change = abs(distance_reward - self.last_distance_reward)
             if change >= 5.0:
-                print(f"\nSignificant distance change! Old: {self.last_distance_reward:.2f}, New: {distance_reward:.2f}")
+                print(
+                    f"\nSignificant distance change! Old: {self.last_distance_reward:.2f}, New: {distance_reward:.2f}"
+                )
                 self.last_distance_reward = distance_reward
 
-
-        # Exploration reward (reduced importance)
-        if position_tuple not in self.visited_coords:
-            exploration_reward = 1
-            self.visited_coords.add(position_tuple)
-            print(f"\nNew area explored! Position: {position}, Battle: {self.battle}")
-            print(f"Exploration reward: {exploration_reward}")
-        else:
-            exploration_reward = -2
-
-        # Battle reward (kept the same)
+        # Battle reward (scaled by steps)
         if not self.battle_reward_applied and self.battle:
-            battle_reward = 10000
+            battle_reward = 100000 * (1 / self.current_step)
             self.battle_reward_applied = True
             print(f"\nBattle found! Position: {position}, Battle: {self.battle}")
             print(f"Battle reward: {battle_reward}")
-        else:
-            battle_reward = 0
+            # NOTE: only battle reward is active right now
+            # Others are still calculated above but not used.
+            # And done = self.battle below, so the episode ends on finding a battle
+            return battle_reward
 
-        reward = distance_reward + exploration_reward + battle_reward
+        return 0  # No reward for non-battle steps
 
-        return reward
-
-    def step(self, action=None, manual=False):
+    def step(self, action=None, manual=False, agent=None):
         self.current_step += 1
-
         if not manual and action is not None:
             self.controller.perform_action(action)
 
         self.controller.pyboy.tick()
+        self.battle = self.controller.is_in_battle()
+        self.position = self.controller.get_global_coords()
+        self.visited_coords.add(tuple(self.position))  # Add this line
 
-        if self.controller.is_in_battle():
-            self.battle = True
-            if self.steps_to_battle is None:
-                self.steps_to_battle = self.current_step
-        else:
-            self.battle = False
+        if self.battle and self.steps_to_battle is None:
+            self.steps_to_battle = self.current_step
 
         position = self.controller.get_global_coords()
         step_reward = self.calculate_reward(position)
@@ -124,12 +128,20 @@ class env_red(AbstractEnvironment):
             "battle": self.battle,
         }
 
-        done = False
-
-        if not manual:
-            self.update_q_table(self.previous_state, action, next_state, step_reward)
+        if not manual and agent is not None:
+            agent.update_q_table(self.previous_state, action, next_state, step_reward)
 
         self.previous_state = next_state
+        done = self.battle  # Episode ends when battle is found
+
+        experience = {
+            "state": self.previous_state,
+            "action": action,
+            "reward": step_reward,
+            "next_state": next_state,
+            "done": done,
+        }
+        self.replay_buffer.add(experience)
 
         return next_state, step_reward, done, {}
 
@@ -147,14 +159,23 @@ class env_red(AbstractEnvironment):
     def save_episode_stats(self, episode_id):
         """Save episode statistics."""
         stats = {
-            "visited_coords": list(self.visited_coords),
-            "steps_to_battle": self.steps_to_battle,
             "total_steps": self.current_step,
-            "total_reward": self.total_reward,  # Add this line
+            "steps_to_battle": self.steps_to_battle,
+            "total_reward": self.total_reward,
+            "final_position": self.position,
+            "visited_coords": list(
+                self.visited_coords
+            ),  # Convert set to list for serialization
+            "battle": self.battle,
+            "battle_reward_applied": self.battle_reward_applied,
+            "last_distance_reward": self.last_distance_reward,
         }
         os.makedirs("episodes", exist_ok=True)
         with open(f"episodes/episode_{episode_id}.pkl", "wb") as f:
             pickle.dump(stats, f)
+
+        os.makedirs("replays", exist_ok=True)
+        self.replay_buffer.save(f"replays/replay_{episode_id}.pkl")
 
     def close(self):
         self.controller.close()
