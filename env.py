@@ -41,15 +41,18 @@ class env_red(AbstractEnvironment):
         self.discount_factor = discount_factor
         self.visited_coords = set()  # Track visited coordinates
         self.battle = False
+        self.total = 0
+        self.battle_reward_applied = False 
 
-   
+
     def reset(self):
         self.controller.load_state()
         position = self.controller.get_global_coords()
         initial_state = {
             "position": position,
-            "in_battle": False,
+            "in_battle": 0,
             "exploration_reward": 0,
+            "cumulative_reward": 0  
         }
         self.previous_state = initial_state  # Initialize previous_state
         return initial_state
@@ -70,13 +73,11 @@ class env_red(AbstractEnvironment):
         next_state = {
             "position": position,      
             "exploration_reward": self.calculate_exploration_reward(position),
-            "battle": self.battle,
+            "battle": self.apply_battle_reward(),
         }
         reward = 1  # Replace with actual reward calculation
         done = False  # Set to True if the episode ends
-
-        # Update the Q-table only in automated mode
-        # print(f'the previous stae {self.previous_state['exploration_reward']}')
+         
         if self.previous_state['exploration_reward'] != next_state["exploration_reward"]:
            print(f'next is {next_state}')
         if not manual:
@@ -96,12 +97,21 @@ class env_red(AbstractEnvironment):
             return 10  # Exploration reward for new positions
         return 0  # No reward if position has been visited before
 
+    def apply_battle_reward(self):
+        #apply the reard
+        if not self.battle_reward_applied and self.battle:
+            self.battle_reward_applied = True
+            return 100
+        return 0
     def update_q_table(self, state, action, next_state, reward):
         """Updates the Q-table for the current environment state."""
         position = next_state['position']
         exploration_reward = self.calculate_exploration_reward(position)
-        total_reward = reward + exploration_reward
-
+        #update the reward for reaching 
+        #add the battle reward
+        #if battle rewward and not applied then apply
+        # battle_reward = self.apply_battle_reward()
+        total_reward = reward + exploration_reward 
         # Update Q-table with the new reward
         state, next_state = tuple(state.items()), tuple(next_state.items())
         action_index = Actions.list().index(action)
