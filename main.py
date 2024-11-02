@@ -10,10 +10,9 @@ def parse_arguments():
     parser.add_argument("--manual", action="store_true", help="Enable manual control mode.")
     return parser.parse_args()
 
-def run_ai_mode(checkpoint=None):
-    environment = env_red()
+def run_ai_mode(environment, checkpoint=None):
     # Uncomment this to start the run from a checkpoint instead of an empty q table
-    #checkpoint="checkpoints/agent_state_20241101_173109_ahuDmaYL.pkl"
+    checkpoint="checkpoints/agent_state_20241101_180020_Fs1W18gw.pkl"
     environment.reset() 
     ai_agent = AIAgent()
     if checkpoint is not None:
@@ -58,11 +57,15 @@ def run_manual_mode():
 def main():
     args = parse_arguments()
     environment = env_red()
+<<<<<<< HEAD
+=======
+    
+>>>>>>> 407e370 (add in_battle to state)
     try:
         if args.manual:
-            run_manual_mode()
+            run_manual_mode(environment)
         else:
-            run_ai_mode()
+            run_ai_mode(environment)
     except KeyboardInterrupt:
         print("Program interrupted. Stopping emulator...")
     finally:

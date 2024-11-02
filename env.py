@@ -3,6 +3,7 @@ from game_controller import GameController
 from config import ROM_PATH, EMULATION_SPEED
 from global_map import local_to_global
 import numpy as np
+
 from collections import defaultdict
 from actions import Actions  # Replace `actions` with the actual module name if different
 
@@ -44,13 +45,13 @@ class env_red(AbstractEnvironment):
     def reset(self):
         self.controller.load_state()
         position = self.controller.get_global_coords()
+        in_battle = self.controller.is_in_battle()
         initial_state = {
             "position": position,
-            "score": 0,
+            "in_battle": in_battle,
         }
         self.previous_state = initial_state  # Initialize previous_state
         return initial_state
-
 
     def step(self, action=None, manual=False):
         """Execute a step in the environment, optionally with manual control."""
@@ -61,10 +62,13 @@ class env_red(AbstractEnvironment):
         self.controller.pyboy.tick()  # Advance the emulator state
 
         position = self.controller.get_global_coords()
+        in_battle = self.controller.is_in_battle()
+        exploration_reward = self.calculate_exploration_reward(position)
+
         next_state = {
             "position": position,
-            "score": 5,
-            "exploration_reward": self.calculate_exploration_reward(position),
+            "in_battle": in_battle,
+            "exploration_reward": exploration_reward,
         }
         reward = 1  # Replace with actual reward calculation
         done = False  # Set to True if the episode ends
@@ -75,6 +79,10 @@ class env_red(AbstractEnvironment):
         
         self.previous_state = next_state  # Update previous state
 
+        if in_battle:
+            reward += 200
+
+        reward += exploration_reward  # is this right?
         return next_state, reward, done, {}
 
     def calculate_exploration_reward(self, position):
