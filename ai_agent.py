@@ -31,8 +31,8 @@ class AIAgent:
         if r < self.exploration_rate:
             return np.random.choice(Actions.list())
         action_index = np.argmax(self.q_table[state])
-        print(f"{r=} {self.exploration_rate=} q table", self.q_table[state])
-        print(state)
+        #print(f"{r=} {self.exploration_rate=} q table", self.q_table[state])
+        #print(state)
         return Actions.list()[action_index]
 
     def update(self, state, action, reward, next_state):
@@ -61,8 +61,6 @@ class AIAgent:
         # Encourages exploration only/mostly at beginning of episode
         # if self.exploration_rate > self.min_exploration_rate:
         #     self.exploration_rate *= self.exploration_decay
-
-        return total_reward
 
     def run(self, env, checkpoint="agent_state.pkl", max_steps=100):
         """Run the agent in the environment using the Q-table from the checkpoint file."""
