@@ -16,6 +16,7 @@ class AIAgent:
         self.exploration_rate = exploration_rate
         self.exploration_decay = exploration_decay
         self.min_exploration_rate = min_exploration_rate
+  
 
     def select_action(self, state):
         """Selects the action with the highest Q-value from the Q-table for a given state."""
