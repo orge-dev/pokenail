@@ -57,10 +57,6 @@ def run_manual_mode():
 def main():
     args = parse_arguments()
     environment = env_red()
-<<<<<<< HEAD
-=======
-    
->>>>>>> 407e370 (add in_battle to state)
     try:
         if args.manual:
             run_manual_mode(environment)
