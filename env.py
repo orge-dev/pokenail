@@ -27,14 +27,6 @@ class AbstractEnvironment(ABC):
         x_pos, y_pos, map_n = self.get_game_coords()
         return local_to_global(y_pos, x_pos, map_n)
 
-    def update_explore_map(self):
-        c = self.get_global_coords()
-        if c[0] >= self.explore_map.shape[0] or c[1] >= self.explore_map.shape[1]:
-            print(f"coord out of bounds! global: {c} game: {self.get_game_coords()}")
-            pass
-        else:
-            self.explore_map[c[0], c[1]] = 255
-
 
 class env_red(AbstractEnvironment):
     def __init__(self, learning_rate=0.1, discount_factor=0.9):
@@ -79,10 +71,7 @@ class env_red(AbstractEnvironment):
         reward = 1  # Replace with actual reward calculation
         done = False  # Set to True if the episode ends
 
-        if (
-            self.previous_state["exploration_reward"]
-            != next_state["exploration_reward"]
-        ):
+        if self.previous_state != next_state:
             print(f"next is {next_state}")
         if not manual:
             self.update_q_table(self.previous_state, action, next_state, reward)

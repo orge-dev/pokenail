@@ -46,14 +46,10 @@ def run_manual_mode():
     controller = environment.controller
     try:
         controller.load_state()
-        still_running = True
-        while still_running:
+        done = False
+        while not done:
             # Call step without an action, only in manual mode
             next_state, reward, done, _ = environment.step(manual=True)
-            print(f"{next_state=}, {reward=}, {done=}")
-            still_running = not done
-            position = controller.get_global_coords()
-            print(f"manual {position=}")
     finally:
         controller.save_state()
         controller.close()
