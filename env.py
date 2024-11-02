@@ -46,7 +46,7 @@ class env_red(AbstractEnvironment):
         position = self.controller.get_global_coords()
         initial_state = {
             "position": position,
-            "score": 0,
+            "in_battle": False,
         }
         self.previous_state = initial_state  # Initialize previous_state
         return initial_state
@@ -63,7 +63,7 @@ class env_red(AbstractEnvironment):
         position = self.controller.get_global_coords()
         next_state = {
             "position": position,
-            "score": 5,
+            
             "exploration_reward": self.calculate_exploration_reward(position),
         }
         reward = 1  # Replace with actual reward calculation
