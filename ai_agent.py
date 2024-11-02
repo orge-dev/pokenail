@@ -8,10 +8,7 @@ class AIAgent:
     def __init__(
         self,
         exploration_rate=1.0,
-        
-
-
-exploration_decay=0.995,
+        exploration_decay=0.995,
         min_exploration_rate=0.01,
     ):
         num_actions = len(Actions.list())
@@ -25,6 +22,7 @@ exploration_decay=0.995,
         state = tuple(state.items())
         if np.random.random() < self.exploration_rate:
             return np.random.choice(Actions.list())
+        state = self.filter_state(state)
         action_index = np.argmax(self.q_table[state])
         return Actions.list()[action_index]
 

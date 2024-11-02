@@ -21,7 +21,8 @@ def analyze_checkpoints(checkpoint_dir="checkpoints"):
             with open(filepath, 'rb') as f:
                 state = pickle.load(f)
                 visited_coords = state['visited_coords']
-                print(f"{filename}: {len(visited_coords)} unique coordinates visited")
+                first_battle = state.get('first_battle_step', 'No battle')
+                print(f"{filename}: {len(visited_coords)} unique coordinates visited, first battle at step {first_battle}")
 
 if __name__ == "__main__":
     analyze_checkpoints()
