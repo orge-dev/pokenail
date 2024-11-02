@@ -10,9 +10,14 @@ def parse_arguments():
     parser.add_argument("--manual", action="store_true", help="Enable manual control mode.")
     return parser.parse_args()
 
-def run_ai_mode():
+def run_ai_mode(checkpoint=None):
     environment = env_red()
+    # Uncomment this to start the run from a checkpoint instead of an empty q table
+    #checkpoint="checkpoints/agent_state_20241101_173109_ahuDmaYL.pkl"
+
     ai_agent = AIAgent()
+    if checkpoint is not None:
+        ai_agent.load_state(checkpoint)
 
     episode_id = generate_timestamped_id()
 
@@ -56,9 +61,9 @@ def main():
     
     try:
         if args.manual:
-            run_manual_mode(environment)
+            run_manual_mode()
         else:
-            run_ai_mode(environment, ai_agent)
+            run_ai_mode()
     except KeyboardInterrupt:
         print("Program interrupted. Stopping emulator...")
     finally:
