@@ -1,4 +1,5 @@
 red.gb.ram
+game_state.save
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

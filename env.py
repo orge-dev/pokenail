@@ -40,19 +40,27 @@ class env_red(AbstractEnvironment):
         self.controller.load_state()
         # Initialize the game state, such as player position and score
         position = self.controller.get_global_coords()
+        in_battle = self.controller.is_in_battle()
         initial_state = {
             "position": position,
-            "score": 0,
+            "in_battle": in_battle,
+            "step": 0
         }  # Replace with actual state logic
         return initial_state
 
-    def step(self):
+    def step(self, step_num):
         self.controller.pyboy.tick()
 
         # Update the state after action
         position = self.controller.get_global_coords()
-        next_state = {"position": position, "score": 5}  # Replace with real state info
+        in_battle = self.controller.is_in_battle()
+
+
+        # TODO: type this
+        next_state = {"position": position, "in_battle": in_battle, "step": step_num}
         reward = 1  # Define reward logic
+        if in_battle:
+            reward += 200
         done = False  # Set True if episode ends
         return next_state, reward, done, {}
 

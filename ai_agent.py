@@ -22,7 +22,10 @@ class AIAgent:
         self.exploration_rate = exploration_rate
         self.exploration_decay = exploration_decay
         self.min_exploration_rate = min_exploration_rate
+
+        # Per-episode agent data/memory
         self.visited_coords = set()  # Track visited coordinates
+        self.first_battle_step = None
 
     def select_action(self, state):
         """Selects the action with the highest Q-value from the Q-table for a given state."""
@@ -39,6 +42,9 @@ class AIAgent:
         """Updates the Q-table using the Q-learning update rule."""
         position = state['position']
         position_tuple = tuple(position)
+
+        if state['in_battle'] and self.first_battle_step is None:
+            self.first_battle_step = state['step']
         
         # Add exploration reward if position is new
         exploration_reward = 10 if position_tuple not in self.visited_coords else 0
@@ -80,7 +86,8 @@ class AIAgent:
         """Saves both Q-table and visited coordinates"""
         state = {
             'q_table': dict(self.q_table),
-            'visited_coords': self.visited_coords
+            'visited_coords': self.visited_coords,
+            'first_battle_step': self.first_battle_step
         }
         with open(filename, "wb") as file:
             pickle.dump(state, file)
@@ -95,6 +102,7 @@ class AIAgent:
                 state['q_table']
             )
             self.visited_coords = state['visited_coords']
+            self.first_battle_step = state.get('first_battle_step', None)
 
 
 # Training Loop
