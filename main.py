@@ -1,20 +1,24 @@
 from ai_agent import AIAgent
-from config import ROM_PATH, EMULATION_SPEED
-from game_controller import GameController
 from env import env_red
 from utils import generate_timestamped_id
 import argparse
 
+
 def parse_arguments():
-    parser = argparse.ArgumentParser(description="Run Pokémon Red with AI or manual control.")
-    parser.add_argument("--manual", action="store_true", help="Enable manual control mode.")
+    parser = argparse.ArgumentParser(
+        description="Run Pokémon Red with AI or manual control."
+    )
+    parser.add_argument(
+        "--manual", action="store_true", help="Enable manual control mode."
+    )
     return parser.parse_args()
+
 
 def run_ai_mode(checkpoint=None):
     environment = env_red()
     # Uncomment this to start the run from a checkpoint instead of an empty q table
-    #checkpoint="checkpoints/agent_state_20241101_173109_ahuDmaYL.pkl"
-    environment.reset() 
+    # checkpoint="checkpoints/agent_state_20241101_173109_ahuDmaYL.pkl"
+    environment.reset()
     ai_agent = AIAgent()
     if checkpoint is not None:
         ai_agent.load_state(checkpoint)
@@ -67,6 +71,7 @@ def main():
         print("Program interrupted. Stopping emulator...")
     finally:
         environment.close()
+
 
 if __name__ == "__main__":
     main()

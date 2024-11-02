@@ -4,7 +4,9 @@ from config import ROM_PATH, EMULATION_SPEED
 from global_map import local_to_global
 import numpy as np
 from collections import defaultdict
-from actions import Actions  # Replace `actions` with the actual module name if different
+from actions import (
+    Actions,
+)  # Replace `actions` with the actual module name if different
 
 
 class AbstractEnvironment(ABC):
@@ -33,6 +35,7 @@ class AbstractEnvironment(ABC):
         else:
             self.explore_map[c[0], c[1]] = 255
 
+
 class env_red(AbstractEnvironment):
     def __init__(self, learning_rate=0.1, discount_factor=0.9):
         self.controller = GameController(ROM_PATH, EMULATION_SPEED)
@@ -42,8 +45,7 @@ class env_red(AbstractEnvironment):
         self.visited_coords = set()  # Track visited coordinates
         self.battle = False
         self.total = 0
-        self.battle_reward_applied = False 
-
+        self.battle_reward_applied = False
 
     def reset(self):
         self.controller.load_state()
@@ -52,43 +54,43 @@ class env_red(AbstractEnvironment):
             "position": position,
             "in_battle": 0,
             "exploration_reward": 0,
-            "cumulative_reward": 0  
+            "cumulative_reward": 0,
         }
         self.previous_state = initial_state  # Initialize previous_state
         return initial_state
 
-
     def step(self, action=None, manual=False):
         """Execute a step in the environment, optionally with manual control."""
-       
+
         if not manual and action is not None:
             # Perform the action only if not in manual mode and an action is provided
             self.controller.perform_action(action)
-            
+
         self.controller.pyboy.tick()  # Advance the emulator state
         if self.controller.is_in_battle():
-            #updat the reward 
+            # updat the reward
             self.battle = True
         position = self.controller.get_global_coords()
         next_state = {
-            "position": position,      
+            "position": position,
             "exploration_reward": self.calculate_exploration_reward(position),
             "battle": self.apply_battle_reward(),
         }
         reward = 1  # Replace with actual reward calculation
         done = False  # Set to True if the episode ends
-         
-        if self.previous_state['exploration_reward'] != next_state["exploration_reward"]:
-           print(f'next is {next_state}')
+
+        if (
+            self.previous_state["exploration_reward"]
+            != next_state["exploration_reward"]
+        ):
+            print(f"next is {next_state}")
         if not manual:
             self.update_q_table(self.previous_state, action, next_state, reward)
 
-
         self.previous_state = next_state  # Update previous state
 
-        
         return next_state, reward, done, {}
-    
+
     def calculate_exploration_reward(self, position):
         """Calculate an exploration reward for visiting new positions."""
         position_tuple = tuple(position)
@@ -98,20 +100,21 @@ class env_red(AbstractEnvironment):
         return 0  # No reward if position has been visited before
 
     def apply_battle_reward(self):
-        #apply the reard
+        # apply the reard
         if not self.battle_reward_applied and self.battle:
             self.battle_reward_applied = True
             return 100
         return 0
+
     def update_q_table(self, state, action, next_state, reward):
         """Updates the Q-table for the current environment state."""
-        position = next_state['position']
+        position = next_state["position"]
         exploration_reward = self.calculate_exploration_reward(position)
-        #update the reward for reaching 
-        #add the battle reward
-        #if battle rewward and not applied then apply
+        # update the reward for reaching
+        # add the battle reward
+        # if battle rewward and not applied then apply
         # battle_reward = self.apply_battle_reward()
-        total_reward = reward + exploration_reward 
+        total_reward = reward + exploration_reward
         # Update Q-table with the new reward
         state, next_state = tuple(state.items()), tuple(next_state.items())
         action_index = Actions.list().index(action)

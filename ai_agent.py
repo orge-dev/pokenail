@@ -2,7 +2,7 @@ import numpy as np
 import pickle
 from collections import defaultdict
 from actions import Actions
-import logging
+
 
 class AIAgent:
     def __init__(
@@ -16,7 +16,6 @@ class AIAgent:
         self.exploration_rate = exploration_rate
         self.exploration_decay = exploration_decay
         self.min_exploration_rate = min_exploration_rate
-  
 
     def select_action(self, state):
         """Selects the action with the highest Q-value from the Q-table for a given state."""
@@ -35,4 +34,6 @@ class AIAgent:
     def load_state(self, filename="agent_state.pkl"):
         """Loads the Q-table."""
         with open(filename, "rb") as file:
-            self.q_table = defaultdict(lambda: np.zeros(len(Actions.list())), pickle.load(file))
+            self.q_table = defaultdict(
+                lambda: np.zeros(len(Actions.list())), pickle.load(file)
+            )

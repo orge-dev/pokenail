@@ -44,16 +44,16 @@ class GameController:
     def get_global_coords(self):
         x_pos, y_pos, map_n = self.get_game_coords()
         return local_to_global(y_pos, x_pos, map_n)
-    
+
     def is_in_battle(self):
-            """Returns True if the game is currently in a battle."""
-            # Memory address 0xD057 indicates battle state
-            battle_type = self.read_m(0xD057)
-       
-            # if battle_type:
-            #     print("in battle!")
-            return battle_type != 0
-    
+        """Returns True if the game is currently in a battle."""
+        # Memory address 0xD057 indicates battle state
+        battle_type = self.read_m(0xD057)
+
+        # if battle_type:
+        #     print("in battle!")
+        return battle_type != 0
+
     def perform_action(self, action):
         action_map = {
             "A": "a",
