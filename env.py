@@ -76,22 +76,7 @@ class env_red(AbstractEnvironment):
         self.previous_state = next_state  # Update previous state
 
         return next_state, reward, done, {}
-
-        # if not manual: 
-        #     self.controller.perform_action(action)
-        self.controller.pyboy.tick()
-
-        position = self.controller.get_global_coords()
-        next_state = {"position": position, "score": 5, "exploration_reward": self.calculate_exploration_reward(position)}
-        reward = 1  # Replace with actual reward calculation
-        done = False  # Set to True if episode ends
-
-        # Pass `state`, `action`, `next_state`, and `reward` to update_q_table
-        if not manual:
-         self.update_q_table(self.previous_state, action, next_state, reward)
-        self.previous_state = next_state  # Update previous state
-
-        return next_state, reward, done, {}
+    
     def calculate_exploration_reward(self, position):
         """Calculate an exploration reward for visiting new positions."""
         position_tuple = tuple(position)
