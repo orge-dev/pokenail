@@ -11,7 +11,7 @@ class AIAgent:
         self,
         learning_rate=0.1,
         discount_factor=0.9,
-        exploration_rate=1.0,
+        exploration_rate=0.5,
         exploration_decay=0.995,
         min_exploration_rate=0.01,
     ):
@@ -27,15 +27,20 @@ class AIAgent:
         self.visited_coords = set()  # Track visited coordinates
         self.first_battle_step = None
 
+    def filter_state(self, state):
+        hidden_state_keys = {"step"} # if we're on a given tile, action is probably the same as previous step? (actually not always like we have to backtrack sometimes but we'll handle that later)
+        filtered_state = tuple((k, v) for k, v in state.items() if k not in hidden_state_keys)
+        return filtered_state
+
     def select_action(self, state):
         """Selects the action with the highest Q-value from the Q-table for a given state."""
-        state = tuple(state.items())
         r = np.random.random()
         if r < self.exploration_rate:
             return np.random.choice(Actions.list())
+        state = self.filter_state(state)
         action_index = np.argmax(self.q_table[state])
-        #print(f"{r=} {self.exploration_rate=} q table", self.q_table[state])
-        #print(state)
+        print(f"{r=} {self.exploration_rate=} q table", self.q_table[state])
+        print(state)
         return Actions.list()[action_index]
 
     def update(self, state, action, reward, next_state):
@@ -45,7 +50,7 @@ class AIAgent:
 
         if state['in_battle'] and self.first_battle_step is None:
             self.first_battle_step = state['step']
-        
+
         # Add exploration reward if position is new
         exploration_reward = 10 if position_tuple not in self.visited_coords else 0
         total_reward = reward + exploration_reward
@@ -54,15 +59,20 @@ class AIAgent:
         # Add position to visited set
         self.visited_coords.add(position_tuple)
 
-        state, next_state = tuple(state.items()), tuple(next_state.items())
+        # Filter out items that shouldn't be in q table keys
+        state = self.filter_state(state)
+        next_state = self.filter_state(next_state)
+
         action_index = Actions.list().index(action)
         best_next_action_value = np.max(self.q_table[next_state])
 
-        self.q_table[state][action_index] += self.learning_rate * (
+        q_update = self.learning_rate * (
             total_reward
             + self.discount_factor * best_next_action_value
             - self.q_table[state][action_index]
         )
+        self.q_table[state][action_index] += q_update
+        print(f"q update {state}, {Actions.list()[action_index]}, {q_update}")
 
         # Encourages exploration only/mostly at beginning of episode
         # if self.exploration_rate > self.min_exploration_rate:
