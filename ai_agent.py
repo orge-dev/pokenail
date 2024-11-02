@@ -22,31 +22,51 @@ class AIAgent:
         self.exploration_rate = exploration_rate
         self.exploration_decay = exploration_decay
         self.min_exploration_rate = min_exploration_rate
+        self.visited_coords = set()  # Track visited coordinates
 
     def select_action(self, state):
         """Selects the action with the highest Q-value from the Q-table for a given state."""
         state = tuple(state.items())
+        r = np.random.random()
+        if r < self.exploration_rate:
+            return np.random.choice(Actions.list())
         action_index = np.argmax(self.q_table[state])
+        print(f"{r=} {self.exploration_rate=} q table", self.q_table[state])
+        print(state)
         return Actions.list()[action_index]
 
     def update(self, state, action, reward, next_state):
         """Updates the Q-table using the Q-learning update rule."""
+        position = state['position']
+        position_tuple = tuple(position)
+        
+        # Add exploration reward if position is new
+        exploration_reward = 10 if position_tuple not in self.visited_coords else 0
+        total_reward = reward + exploration_reward
+        print(f"{exploration_reward=}")
+        
+        # Add position to visited set
+        self.visited_coords.add(position_tuple)
+
         state, next_state = tuple(state.items()), tuple(next_state.items())
         action_index = Actions.list().index(action)
         best_next_action_value = np.max(self.q_table[next_state])
 
         self.q_table[state][action_index] += self.learning_rate * (
-            reward
+            total_reward
             + self.discount_factor * best_next_action_value
             - self.q_table[state][action_index]
         )
 
-        if self.exploration_rate > self.min_exploration_rate:
-            self.exploration_rate *= self.exploration_decay
+        # Encourages exploration only/mostly at beginning of episode
+        # if self.exploration_rate > self.min_exploration_rate:
+        #     self.exploration_rate *= self.exploration_decay
 
-    def run(self, env, checkpoint="q_table_final.pkl", max_steps=100):
+        return total_reward
+
+    def run(self, env, checkpoint="agent_state.pkl", max_steps=100):
         """Run the agent in the environment using the Q-table from the checkpoint file."""
-        self.load_q_table(checkpoint)
+        self.load_state(checkpoint)
         state = env.reset()
         done, step = False, 0
 
@@ -58,17 +78,25 @@ class AIAgent:
             step += 1
         logging.info("Run completed.")
 
-    def save_q_table(self, filename="q_table.pkl"):
-        """Saves the Q-table to a file."""
+    def save_state(self, filename="agent_state.pkl"):
+        """Saves both Q-table and visited coordinates"""
+        state = {
+            'q_table': dict(self.q_table),
+            'visited_coords': self.visited_coords
+        }
         with open(filename, "wb") as file:
-            pickle.dump(dict(self.q_table), file)
+            pickle.dump(state, file)
+            print(f"saved state to {filename=}")
 
-    def load_q_table(self, filename="q_table.pkl"):
-        """Loads the Q-table from a file."""
+    def load_state(self, filename="agent_state.pkl"):
+        """Loads both Q-table and visited coordinates"""
         with open(filename, "rb") as file:
+            state = pickle.load(file)
             self.q_table = defaultdict(
-                lambda: np.zeros(len(Actions.list())), pickle.load(file)
+                lambda: np.zeros(len(Actions.list())), 
+                state['q_table']
             )
+            self.visited_coords = state['visited_coords']
 
 
 # Training Loop
