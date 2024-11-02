@@ -28,7 +28,7 @@ def run_ai_mode(checkpoint=None):
         if step % 1000 == 0:
             ai_agent.save_state(f"checkpoints/agent_state_{episode_id}.pkl")
         action = ai_agent.select_action(state)
-        environment.controller.perform_action(action)
+        # environment.controller.perform_action(action)
         next_state, reward, done, _ = environment.step(action, False)
         print(f"{next_state=}, {reward=}, {done=}")
         state = next_state
