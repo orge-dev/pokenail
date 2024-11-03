@@ -61,20 +61,29 @@ class env_red(AbstractEnvironment):
         reward = 0
         position_tuple = tuple(position)
 
-        # Larger exploration bonus for new areas
+        # Track exploration and battle rewards separately
+        exploration_reward = 0
+        battle_reward = 0
+
+        # Exploration reward
         if position_tuple not in self.visited_coords:
-            reward += 5
+            exploration_reward = 5
+            reward += exploration_reward
             self.visited_coords.add(position_tuple)
-
-        # Smaller penalty for revisits to encourage some backtracking
+            print(f"\nNew area explored! Position: {position}, Battle: {self.battle}")
+            print(f"Exploration reward: {exploration_reward}")
         else:
-            reward -= 0.5
+            exploration_reward = -0.5
+            reward += exploration_reward
 
-        # Battle reward with distance component
+        # Battle reward
         if not self.battle_reward_applied and self.battle:
-            self.battle_reward_applied = True
             steps_taken = self.current_step
-            reward += 10000 * (1.0 / steps_taken)  # Reward finding battles quickly
+            battle_reward = 10000 * (1.0 / steps_taken)
+            reward += battle_reward
+            self.battle_reward_applied = True
+            print(f"\nBattle found! Position: {position}, Battle: {self.battle}")
+            print(f"Battle reward: {battle_reward}")
 
         return reward
 
