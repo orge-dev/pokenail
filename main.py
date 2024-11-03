@@ -13,10 +13,10 @@ def parse_arguments():
         "--manual", action="store_true", help="Enable manual control mode."
     )
     parser.add_argument(
-        "--episodes", type=int, default=10, help="Number of episodes to run"
+        "--episodes", type=int, default=1000, help="Number of episodes to run"
     )
     parser.add_argument(
-        "--episode_length", type=int, default=2000, help="Steps per episode"
+        "--episode_length", type=int, default=3000, help="Steps per episode"
     )
     return parser.parse_args()
 
@@ -81,7 +81,7 @@ def main():
             run_manual_mode()
         else:
             # change to None to start with blank q table
-            initial_q_state = "checkpoints/agent_state_20241102_172029_cUI8NC7A.pkl"
+            initial_q_state = "checkpoints/agent_state_20241102_180117_j6BG4hiF.pkl"
             previous_id = initial_q_state
             for episode in range(args.episodes):
                 print(f"\nStarting episode {episode + 1}/{args.episodes}")

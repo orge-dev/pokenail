@@ -35,6 +35,7 @@ def analyze_episodes(episodes_dir="episodes"):
                     print(f"\nEpisode {filename}:")
                     print(f"Unique coordinates visited: {len(stats['visited_coords'])}")
                     print(f"Total steps: {stats['total_steps']}")
+                    print(f"Total reward: {stats['total_reward']}")  # Add this line
                     print(f"Battle status: {battle_info}")
             except EOFError:
                 pass

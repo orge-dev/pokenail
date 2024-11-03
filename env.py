@@ -31,7 +31,7 @@ class AbstractEnvironment(ABC):
 
 
 class env_red(AbstractEnvironment):
-    def __init__(self, learning_rate=0.1, discount_factor=0.9):
+    def __init__(self, learning_rate=0.05, discount_factor=0.9):
         self.controller = GameController(ROM_PATH, EMULATION_SPEED)
         self.q_table = defaultdict(lambda: np.zeros(len(Actions.list())))
         self.learning_rate = learning_rate
@@ -102,14 +102,14 @@ class env_red(AbstractEnvironment):
         position_tuple = tuple(position)
         if position_tuple not in self.visited_coords:
             self.visited_coords.add(position_tuple)  # Mark position as visited
-            return 10  # Exploration reward for new positions
-        return 0  # No reward if position has been visited before
+            return 2  # Exploration reward for new positions
+        return -1  # No reward if position has been visited before
 
     def apply_battle_reward(self):
         # apply the reard
         if not self.battle_reward_applied and self.battle:
             self.battle_reward_applied = True
-            return 100
+            return 10000
         return 0
 
     def update_q_table(self, state, action, next_state, reward):
