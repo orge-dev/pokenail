@@ -2,7 +2,7 @@ from ai_agent import AIAgent
 from env import env_red
 from utils import generate_timestamped_id
 import argparse
-
+import os
 
 def parse_arguments():
     parser = argparse.ArgumentParser(
@@ -11,63 +11,83 @@ def parse_arguments():
     parser.add_argument(
         "--manual", action="store_true", help="Enable manual control mode."
     )
+    parser.add_argument(
+        "--episodes", type=int, default=10, help="Number of episodes to run"
+    )
+    parser.add_argument(
+        "--episode_length", type=int, default=2000, help="Steps per episode"
+    )
     return parser.parse_args()
 
-
-def run_ai_mode(checkpoint=None):
+def run_ai_mode(episode_id=None, previous_episode_id=None, episode_length=1000):
     environment = env_red()
-    # Uncomment this to start the run from a checkpoint instead of an empty q table
-    # checkpoint="checkpoints/agent_state_20241101_173109_ahuDmaYL.pkl"
     environment.reset()
     ai_agent = AIAgent()
-    if checkpoint is not None:
-        ai_agent.load_state(checkpoint)
+    
+    # Load previous episode's checkpoint if exists
+    if previous_episode_id:
+        checkpoint = f"checkpoints/agent_state_{previous_episode_id}.pkl"
+        if os.path.exists(checkpoint):
+            ai_agent.load_state(checkpoint)
 
-    episode_id = generate_timestamped_id()
+    # Generate new episode ID if none provided
+    if episode_id is None:
+        episode_id = generate_timestamped_id()
 
     state = environment.reset()
     step = 0
-    while True:
+    while step < episode_length:
         step += 1
-        if step % 1000 == 0:
+        if step % 100 == 0:  # Save checkpoint less frequently
             ai_agent.save_state(f"checkpoints/agent_state_{episode_id}.pkl")
+        
         action = ai_agent.select_action(state)
-        # environment.controller.perform_action(action)
         next_state, reward, done, _ = environment.step(action, False)
-        print(f"{next_state=}, {reward=}, {done=}")
+        print(f"Episode step {step}/{episode_length}: {next_state=}, {reward=}, {done=}")
         state = next_state
         if done:
             break
-
+    
+    # Final save at episode end
+    ai_agent.save_state(f"checkpoints/agent_state_{episode_id}.pkl")
+    return episode_id
 
 def run_manual_mode():
     environment = env_red()
-    environment.reset()  # Ensure previous_state is initialized
+    environment.reset()
     controller = environment.controller
     try:
         controller.load_state()
         done = False
         while not done:
-            # Call step without an action, only in manual mode
             next_state, reward, done, _ = environment.step(manual=True)
     finally:
         controller.save_state()
         controller.close()
 
-
 def main():
     args = parse_arguments()
     environment = env_red()
+    
     try:
         if args.manual:
             run_manual_mode()
         else:
-            run_ai_mode()
+            # change to None to start with blank q table
+            initial_q_state = 'checkpoints/agent_state_20241102_171627_y7qoaCgG.pkl'
+            previous_id = initial_q_state
+            for episode in range(args.episodes):
+                print(f"\nStarting episode {episode + 1}/{args.episodes}")
+                episode_id = generate_timestamped_id()
+                previous_id = run_ai_mode(
+                    episode_id=episode_id,
+                    previous_episode_id=previous_id,
+                    episode_length=args.episode_length
+                )
     except KeyboardInterrupt:
         print("Program interrupted. Stopping emulator...")
     finally:
         environment.close()
-
 
 if __name__ == "__main__":
     main()
