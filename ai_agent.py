@@ -7,7 +7,7 @@ from actions import Actions
 class AIAgent:
     def __init__(
         self,
-        exploration_rate=0.8,
+        exploration_rate=1.0,
         # exploration_decay=0.995,
         # min_exploration_rate=0.01,
     ):

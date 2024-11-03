@@ -16,13 +16,12 @@ def parse_arguments():
         "--episodes", type=int, default=1000, help="Number of episodes to run"
     )
     parser.add_argument(
-        "--episode_length", type=int, default=3000, help="Steps per episode"
+        "--episode_length", type=int, default=300, help="Steps per episode"
     )
     return parser.parse_args()
 
 
-def run_ai_mode(episode_id=None, previous_episode_id=None, episode_length=1000):
-    environment = env_red()
+def run_ai_mode(environment, episode_id=None, previous_episode_id=None, episode_length=1000):
     ai_agent = AIAgent()
 
     # Load previous episode's checkpoint if exists
@@ -91,6 +90,7 @@ def main():
                 print(f"\nStarting episode {episode + 1}/{args.episodes}")
                 episode_id = generate_timestamped_id()
                 previous_id = run_ai_mode(
+                    environment,
                     episode_id=episode_id,
                     previous_episode_id=previous_id,
                     episode_length=args.episode_length,

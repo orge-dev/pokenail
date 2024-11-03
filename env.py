@@ -65,7 +65,7 @@ class env_red(AbstractEnvironment):
         # Distance-based reward
         current_distance = np.sqrt((position[0] - target_position[0])**2 + 
                                 (position[1] - target_position[1])**2)
-        distance_reward = 10.0 / (current_distance + 1)  # Add 1 to avoid division by zero
+        distance_reward = 1000.0 / (current_distance + 1)  # Add 1 to avoid division by zero
 
         # Print first distance reward or significant changes
         if self.last_distance_reward is None:
@@ -73,24 +73,23 @@ class env_red(AbstractEnvironment):
             self.last_distance_reward = distance_reward
         else:
             change = abs(distance_reward - self.last_distance_reward)
-            if change >= 1.0:
+            if change >= 5.0:
                 print(f"\nSignificant distance change! Old: {self.last_distance_reward:.2f}, New: {distance_reward:.2f}")
                 self.last_distance_reward = distance_reward
 
 
         # Exploration reward (reduced importance)
         if position_tuple not in self.visited_coords:
-            exploration_reward = 2
+            exploration_reward = 1
             self.visited_coords.add(position_tuple)
             print(f"\nNew area explored! Position: {position}, Battle: {self.battle}")
             print(f"Exploration reward: {exploration_reward}")
         else:
-            exploration_reward = -0.5
+            exploration_reward = -2
 
         # Battle reward (kept the same)
         if not self.battle_reward_applied and self.battle:
-            steps_taken = self.current_step
-            battle_reward = 10000 * (1.0 / steps_taken)
+            battle_reward = 10000
             self.battle_reward_applied = True
             print(f"\nBattle found! Position: {position}, Battle: {self.battle}")
             print(f"Battle reward: {battle_reward}")
