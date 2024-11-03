@@ -69,9 +69,9 @@ class GameController:
         if action in action_map:
             button = action_map[action]
             self._press_button(button, hold_ticks=20, release_ticks=2)
-            logging.info("Performed action: %s", action)
+            #logging.info("Performed action: %s", action)
         else:
-            logging.warning("Unknown action: %s", action)
+            raise ValueError(f"Unknown action: {action}")
 
     def _press_button(self, button, hold_ticks=20, release_ticks=2):
         """Helper method to press and release a button with specified ticks."""

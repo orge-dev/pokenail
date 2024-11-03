@@ -16,7 +16,7 @@ def parse_arguments():
         "--episodes", type=int, default=1000, help="Number of episodes to run"
     )
     parser.add_argument(
-        "--episode_length", type=int, default=3000, help="Steps per episode"
+        "--episode_length", type=int, default=300, help="Steps per episode"
     )
     return parser.parse_args()
 
@@ -44,9 +44,10 @@ def run_ai_mode(episode_id=None, previous_episode_id=None, episode_length=1000):
 
         action = ai_agent.select_action(state)
         next_state, reward, done, _ = environment.step(action, False)
-        print(
-            f"Episode step {step}/{episode_length}: {next_state=}, {reward=}, {done=}"
-        )
+        if step % 200 == 0:
+            print(
+                f"Episode step {step}/{episode_length}: {next_state=}, {reward=}, {done=}"
+            )
         state = next_state
         if done:
             break
@@ -74,7 +75,8 @@ def main():
             run_manual_mode()
         else:
             # change to None to start with blank q table
-            initial_q_state = "checkpoints/agent_state_20241102_180117_j6BG4hiF.pkl"
+            initial_q_state = None
+
             previous_id = initial_q_state
             for episode in range(args.episodes):
                 print(f"\nStarting episode {episode + 1}/{args.episodes}")
