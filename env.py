@@ -36,97 +36,88 @@ class env_red(AbstractEnvironment):
         self.q_table = defaultdict(lambda: np.zeros(len(Actions.list())))
         self.learning_rate = learning_rate
         self.discount_factor = discount_factor
+
+        self.reset()
+
+    def reset(self):
+        self.controller.load_state()
+
         self.visited_coords = set()  # Track visited coordinates
-        self.battle = False
-        self.total = 0
+        self.battle = self.controller.is_in_battle()
         self.battle_reward_applied = False
         self.current_step = 0
         self.total_reward = 0  # Track total reward for episode
         self.steps_to_battle = None
 
-    def reset(self):
-        self.controller.load_state()
         position = self.controller.get_global_coords()
         initial_state = {
             "position": position,
-            "in_battle": self.battle,
-            "exploration_reward": 0,
-            "cumulative_reward": 0,
+            "battle": self.battle,
         }
-        self.previous_state = initial_state  # Initialize previous_state
+        self.previous_state = initial_state
         return initial_state
 
-    def step(self, action=None, manual=False):
-        """Execute a step in the environment, optionally with manual control."""
+    def calculate_reward(self, position):
+        reward = 0
+        position_tuple = tuple(position)
 
+        # Larger exploration bonus for new areas
+        if position_tuple not in self.visited_coords:
+            reward += 5
+            self.visited_coords.add(position_tuple)
+
+        # Smaller penalty for revisits to encourage some backtracking
+        else:
+            reward -= 0.5
+
+        # Battle reward with distance component
+        if not self.battle_reward_applied and self.battle:
+            self.battle_reward_applied = True
+            steps_taken = self.current_step
+            reward += 10000 * (1.0 / steps_taken)  # Reward finding battles quickly
+
+        return reward
+
+    def step(self, action=None, manual=False):
         self.current_step += 1
 
         if not manual and action is not None:
-            # Perform the action only if not in manual mode and an action is provided
             self.controller.perform_action(action)
 
-        self.controller.pyboy.tick()  # Advance the emulator state
+        self.controller.pyboy.tick()
 
         if self.controller.is_in_battle():
-            # Track first battle occurrence
+            self.battle = True
             if self.steps_to_battle is None:
                 self.steps_to_battle = self.current_step
-
-            self.battle = True
+        else:
+            self.battle = False
 
         position = self.controller.get_global_coords()
-        exploration_reward = self.calculate_exploration_reward(position)
-        battle_reward = self.apply_battle_reward()
+        step_reward = self.calculate_reward(position)
+        self.total_reward += step_reward
 
         next_state = {
             "position": position,
-            "exploration_reward": exploration_reward,
-            "battle": battle_reward,
+            "battle": self.battle,
         }
 
-        step_reward = exploration_reward + battle_reward
-        self.total_reward += step_reward  # Add to episode total
-        done = False  # Set to True if the episode ends
+        done = False
 
-        if self.previous_state != next_state:
-            print(f"next is {next_state}")
         if not manual:
             self.update_q_table(self.previous_state, action, next_state, step_reward)
 
-        self.previous_state = next_state  # Update previous state
+        self.previous_state = next_state
 
         return next_state, step_reward, done, {}
 
-    def calculate_exploration_reward(self, position):
-        """Calculate an exploration reward for visiting new positions."""
-        position_tuple = tuple(position)
-        if position_tuple not in self.visited_coords:
-            self.visited_coords.add(position_tuple)  # Mark position as visited
-            return 2  # Exploration reward for new positions
-        return -1  # No reward if position has been visited before
-
-    def apply_battle_reward(self):
-        # apply the reard
-        if not self.battle_reward_applied and self.battle:
-            self.battle_reward_applied = True
-            return 10000
-        return 0
-
     def update_q_table(self, state, action, next_state, reward):
-        """Updates the Q-table for the current environment state."""
-        position = next_state["position"]
-        exploration_reward = self.calculate_exploration_reward(position)
-        # update the reward for reaching
-        # add the battle reward
-        # if battle rewward and not applied then apply
-        # battle_reward = self.apply_battle_reward()
-        total_reward = reward + exploration_reward
-        # Update Q-table with the new reward
+        """Updates the Q-table for the current environment state and reward."""
         state, next_state = tuple(state.items()), tuple(next_state.items())
         action_index = Actions.list().index(action)
         best_next_action_value = np.max(self.q_table[next_state])
         self.q_table[state][action_index] += self.learning_rate * (
-            total_reward
+            reward
             + self.discount_factor * best_next_action_value
             - self.q_table[state][action_index]
         )

@@ -23,7 +23,6 @@ def parse_arguments():
 
 def run_ai_mode(episode_id=None, previous_episode_id=None, episode_length=1000):
     environment = env_red()
-    environment.reset()
     ai_agent = AIAgent()
 
     # Load previous episode's checkpoint if exists
@@ -61,15 +60,9 @@ def run_ai_mode(episode_id=None, previous_episode_id=None, episode_length=1000):
 def run_manual_mode():
     environment = env_red()
     environment.reset()
-    controller = environment.controller
-    try:
-        controller.load_state()
-        done = False
-        while not done:
-            next_state, reward, done, _ = environment.step(manual=True)
-    finally:
-        controller.save_state()
-        controller.close()
+    done = False
+    while not done:
+        next_state, reward, done, _ = environment.step(manual=True)
 
 
 def main():
