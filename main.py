@@ -4,6 +4,7 @@ from utils import generate_timestamped_id
 import argparse
 import os
 
+
 def parse_arguments():
     parser = argparse.ArgumentParser(
         description="Run Pokémon Red with AI or manual control."
@@ -19,11 +20,12 @@ def parse_arguments():
     )
     return parser.parse_args()
 
+
 def run_ai_mode(episode_id=None, previous_episode_id=None, episode_length=1000):
     environment = env_red()
     environment.reset()
     ai_agent = AIAgent()
-    
+
     # Load previous episode's checkpoint if exists
     if previous_episode_id:
         checkpoint = f"checkpoints/agent_state_{previous_episode_id}.pkl"
@@ -40,17 +42,21 @@ def run_ai_mode(episode_id=None, previous_episode_id=None, episode_length=1000):
         step += 1
         if step % 100 == 0:  # Save checkpoint less frequently
             ai_agent.save_state(f"checkpoints/agent_state_{episode_id}.pkl")
-        
+
         action = ai_agent.select_action(state)
         next_state, reward, done, _ = environment.step(action, False)
-        print(f"Episode step {step}/{episode_length}: {next_state=}, {reward=}, {done=}")
+        print(
+            f"Episode step {step}/{episode_length}: {next_state=}, {reward=}, {done=}"
+        )
         state = next_state
         if done:
             break
-    
+
     # Final save at episode end
     ai_agent.save_state(f"checkpoints/agent_state_{episode_id}.pkl")
+    environment.save_episode_stats(episode_id)
     return episode_id
+
 
 def run_manual_mode():
     environment = env_red()
@@ -65,16 +71,17 @@ def run_manual_mode():
         controller.save_state()
         controller.close()
 
+
 def main():
     args = parse_arguments()
     environment = env_red()
-    
+
     try:
         if args.manual:
             run_manual_mode()
         else:
             # change to None to start with blank q table
-            initial_q_state = 'checkpoints/agent_state_20241102_171627_y7qoaCgG.pkl'
+            initial_q_state = "checkpoints/agent_state_20241102_172029_cUI8NC7A.pkl"
             previous_id = initial_q_state
             for episode in range(args.episodes):
                 print(f"\nStarting episode {episode + 1}/{args.episodes}")
@@ -82,12 +89,13 @@ def main():
                 previous_id = run_ai_mode(
                     episode_id=episode_id,
                     previous_episode_id=previous_id,
-                    episode_length=args.episode_length
+                    episode_length=args.episode_length,
                 )
     except KeyboardInterrupt:
         print("Program interrupted. Stopping emulator...")
     finally:
         environment.close()
+
 
 if __name__ == "__main__":
     main()
