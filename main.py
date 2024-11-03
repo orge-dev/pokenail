@@ -16,7 +16,7 @@ def parse_arguments():
         "--episodes", type=int, default=1000, help="Number of episodes to run"
     )
     parser.add_argument(
-        "--episode_length", type=int, default=300, help="Steps per episode"
+        "--episode_length", type=int, default=3000, help="Steps per episode"
     )
     return parser.parse_args()
 
@@ -44,10 +44,19 @@ def run_ai_mode(episode_id=None, previous_episode_id=None, episode_length=1000):
 
         action = ai_agent.select_action(state)
         next_state, reward, done, _ = environment.step(action, False)
-        if step % 200 == 0:
-            print(
-                f"Episode step {step}/{episode_length}: {next_state=}, {reward=}, {done=}"
-            )
+
+        # debug logs
+        if step % 1000 == 0 or step == episode_length - 1:  # Every 1000 steps or at episode end
+            current_pos = next_state["position"]
+            target_pos = (309, 99)  # Target coordinates
+            distance = ((current_pos[0] - target_pos[0])**2 + 
+                       (current_pos[1] - target_pos[1])**2)**0.5
+            
+            print(f"\nEpisode step {step}/{episode_length}:")
+            print(f"Total reward: {environment.total_reward:.2f}")
+            print(f"Distance to target: {distance:.2f}")
+            print(f"Current position: {current_pos}")
+
         state = next_state
         if done:
             break

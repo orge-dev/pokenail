@@ -48,6 +48,7 @@ class env_red(AbstractEnvironment):
         self.current_step = 0
         self.total_reward = 0  # Track total reward for episode
         self.steps_to_battle = None
+        self.last_distance_reward = None
 
         position = self.controller.get_global_coords()
         initial_state = {
@@ -58,32 +59,45 @@ class env_red(AbstractEnvironment):
         return initial_state
 
     def calculate_reward(self, position):
-        reward = 0
         position_tuple = tuple(position)
+        target_position = (309, 99)
 
-        # Track exploration and battle rewards separately
-        exploration_reward = 0
-        battle_reward = 0
+        # Distance-based reward
+        current_distance = np.sqrt((position[0] - target_position[0])**2 + 
+                                (position[1] - target_position[1])**2)
+        distance_reward = 10.0 / (current_distance + 1)  # Add 1 to avoid division by zero
 
-        # Exploration reward
+        # Print first distance reward or significant changes
+        if self.last_distance_reward is None:
+            print(f"\nInitial distance reward: {distance_reward:.2f}")
+            self.last_distance_reward = distance_reward
+        else:
+            change = abs(distance_reward - self.last_distance_reward)
+            if change >= 1.0:
+                print(f"\nSignificant distance change! Old: {self.last_distance_reward:.2f}, New: {distance_reward:.2f}")
+                self.last_distance_reward = distance_reward
+
+
+        # Exploration reward (reduced importance)
         if position_tuple not in self.visited_coords:
-            exploration_reward = 5
-            reward += exploration_reward
+            exploration_reward = 2
             self.visited_coords.add(position_tuple)
             print(f"\nNew area explored! Position: {position}, Battle: {self.battle}")
             print(f"Exploration reward: {exploration_reward}")
         else:
             exploration_reward = -0.5
-            reward += exploration_reward
 
-        # Battle reward
+        # Battle reward (kept the same)
         if not self.battle_reward_applied and self.battle:
             steps_taken = self.current_step
             battle_reward = 10000 * (1.0 / steps_taken)
-            reward += battle_reward
             self.battle_reward_applied = True
             print(f"\nBattle found! Position: {position}, Battle: {self.battle}")
             print(f"Battle reward: {battle_reward}")
+        else:
+            battle_reward = 0
+
+        reward = distance_reward + exploration_reward + battle_reward
 
         return reward
 
