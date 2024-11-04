@@ -92,9 +92,13 @@ def run_manual_mode():
         next_state, reward, done, _ = environment.step(manual=True)
 
 
-def run_episode(args):
+def run_episode(args, environment=None):
     episode_num, episode_length, headless, initial_q_state = args
-    environment = env_red(headless=headless)
+    if environment is None:
+        should_close_environment = True
+        environment = env_red(headless=headless)
+    else:
+        should_close_environment = False
 
     try:
         print(f"\n*** Starting episode {episode_num}")
@@ -133,61 +137,60 @@ def run_episode(args):
         return episode_id
 
     finally:
-        environment.close()
+        if should_close_environment:
+            environment.close()
 
 
 def main():
     args = parse_arguments()
-    environment = env_red(headless=args.headless)
 
-    try:
-        initial_q_state = "checkpoints/agent_state_20241103_190121_Qn3O6CK9.pkl"
-        # change to None to start with blank q table (doesnt apply to manual mode)
-        # initial_q_state = None
+    # change to None to start with blank q table (doesnt apply to manual mode)
+    initial_q_state = None
 
-        if args.train_from_replays:
-            agent = AIAgent()
-            if initial_q_state:
-                agent.load_state(initial_q_state)
-            agent.train_from_replays()
-            agent.save_state(
-                f"checkpoints/agent_state_{generate_timestamped_id()}.pkl",
-                do_print=True,
-            )
+    if args.train_from_replays:
+        agent = AIAgent()
+        if initial_q_state:
+            agent.load_state(initial_q_state)
+        agent.train_from_replays()
+        agent.save_state(
+            f"checkpoints/agent_state_{generate_timestamped_id()}.pkl",
+            do_print=True,
+        )
 
-        elif args.manual:
-            run_manual_mode()
+    elif args.manual:
+        run_manual_mode()
 
-        else:
-            # Run directly if single process and not headless
-            if args.processes == 1 and not args.headless:
-                print(f"Running {args.episodes} episodes sequentially")
-                episode_ids = []
+    else:
+        # Run directly if single process and not headless
+        if args.processes == 1 and not args.headless:
+            environment = env_red()
+            print(f"Running {args.episodes} episodes sequentially")
+            episode_ids = []
+            try:
                 for i in range(args.episodes):
                     episode_id = run_episode(
-                        (i + 1, args.episode_length, args.headless, initial_q_state)
+                        (i + 1, args.episode_length, args.headless, initial_q_state),
+                        environment=environment,
                     )
                     episode_ids.append(episode_id)
-            else:
-                # Parallel processing for multiple processes or headless mode
-                num_processes = args.processes or cpu_count()
-                print(
-                    f"Running {args.episodes} episodes using {num_processes} processes"
-                )
+            finally:
+                environment.close()  # Only close environment after all episodes
+        else:
+            # Parallel processing for multiple processes or headless mode
+            num_processes = args.processes or cpu_count()
+            print(
+                f"Running {args.episodes} episodes using {num_processes} processes"
+            )
 
-                episode_args = [
-                    (i + 1, args.episode_length, args.headless, initial_q_state)
-                    for i in range(args.episodes)
-                ]
+            episode_args = [
+                (i + 1, args.episode_length, args.headless, initial_q_state)
+                for i in range(args.episodes)
+            ]
 
-                with Pool(processes=num_processes) as pool:
-                    episode_ids = pool.map(run_episode, episode_args, chunksize=1)
+            with Pool(processes=num_processes) as pool:
+                episode_ids = pool.map(run_episode, episode_args, chunksize=1)
 
-            print("\nCompleted episodes:", len(episode_ids))
-    except KeyboardInterrupt:
-        print("Program interrupted. Stopping emulator...")
-    finally:
-        environment.close()
+        print("\nCompleted episodes:", len(episode_ids))
 
 
 if __name__ == "__main__":

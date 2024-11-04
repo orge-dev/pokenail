@@ -132,7 +132,9 @@ class env_red(AbstractEnvironment):
             agent.update_q_table(self.previous_state, action, next_state, step_reward)
 
         self.previous_state = next_state
-        done = self.battle and not manual # dont end on battle if manual
+        done = self.battle and not manual  # dont end on battle if manual
+        if done:
+            print("done is", done)
 
         experience = {
             "state": self.previous_state,
