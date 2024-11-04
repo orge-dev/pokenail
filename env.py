@@ -133,8 +133,6 @@ class env_red(AbstractEnvironment):
 
         self.previous_state = next_state
         done = self.battle and not manual  # dont end on battle if manual
-        if done:
-            print("done is", done)
 
         experience = {
             "state": self.previous_state,
