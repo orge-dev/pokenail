@@ -1,3 +1,7 @@
+import datetime
+import random
+import string
+import time
 import os
 import pickle
 
@@ -12,6 +16,7 @@ def generate_timestamped_id():
     random_str = "".join(random.choices(string.ascii_letters + string.digits, k=8))
 
     return timestamp + random_str
+
 
 def display_episode_statistics(episodes_dir="episodes"):
     """Read and display all episode statistics in the directory."""
@@ -54,13 +59,18 @@ def monitor_episodes(episodes_dir="episodes", polling_interval=5):
                 last_modified_time = os.path.getmtime(filepath)
 
                 # If it's a new or modified file, update statistics
-                if filepath not in processed_files or processed_files[filepath] < last_modified_time:
+                if (
+                    filepath not in processed_files
+                    or processed_files[filepath] < last_modified_time
+                ):
                     processed_files[filepath] = last_modified_time
                     updated = True
 
         # Display statistics only if there's an update
         if updated:
-            os.system('clear')  # Clear the console output for a refreshed display (use 'cls' on Windows)
+            os.system(
+                "clear"
+            )  # Clear the console output for a refreshed display (use 'cls' on Windows)
             display_episode_statistics(episodes_dir)
 
         # Wait before checking again

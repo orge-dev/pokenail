@@ -8,9 +8,7 @@ logging.basicConfig(level=logging.INFO)
 class GameController:
     def __init__(self, rom_path, emulation_speed=1.0, headless=False):
         # Does this work cross platform?
-        self.pyboy = PyBoy(
-            rom_path, window="null" if headless else "SDL2", debug=False
-        )
+        self.pyboy = PyBoy(rom_path, window="null" if headless else "SDL2", debug=False)
         if not self.pyboy:
             raise RuntimeError("Failed to initialize PyBoy with the given ROM.")
 

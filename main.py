@@ -26,8 +26,10 @@ def parse_arguments():
         help="Train agent using stored replay experiences",
     )
     parser.add_argument(
-        "--processes", type=int, default=1, 
-        help="Number of parallel processes (default: CPU count)"
+        "--processes",
+        type=int,
+        default=1,
+        help="Number of parallel processes (default: CPU count)",
     )
     return parser.parse_args()
 
@@ -157,17 +159,29 @@ def main():
             run_manual_mode()
 
         else:
-            # Parallel processing for AI episodes
-            num_processes = args.processes or cpu_count()
-            print(f"Running {args.episodes} episodes using {num_processes} processes")
+            # Run directly if single process and not headless
+            if args.processes == 1 and not args.headless:
+                print(f"Running {args.episodes} episodes sequentially")
+                episode_ids = []
+                for i in range(args.episodes):
+                    episode_id = run_episode(
+                        (i + 1, args.episode_length, args.headless, initial_q_state)
+                    )
+                    episode_ids.append(episode_id)
+            else:
+                # Parallel processing for multiple processes or headless mode
+                num_processes = args.processes or cpu_count()
+                print(
+                    f"Running {args.episodes} episodes using {num_processes} processes"
+                )
 
-            episode_args = [
-                (i + 1, args.episode_length, args.headless, initial_q_state)
-                for i in range(args.episodes)
-            ]
+                episode_args = [
+                    (i + 1, args.episode_length, args.headless, initial_q_state)
+                    for i in range(args.episodes)
+                ]
 
-            with Pool(processes=num_processes) as pool:
-                episode_ids = pool.map(run_episode, episode_args, chunksize=1)
+                with Pool(processes=num_processes) as pool:
+                    episode_ids = pool.map(run_episode, episode_args, chunksize=1)
 
             print("\nCompleted episodes:", len(episode_ids))
     except KeyboardInterrupt:
