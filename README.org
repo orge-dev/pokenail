@@ -1,0 +1,35 @@
+* Generate Training Data
+
+Run
+
+#+begin_src 
+python main.py --processes 0 --headless
+#+end_src
+
+to run headless, with processes = num cpus, and saving replay data (see env.replay_buffer) to the replays folder.
+
+** TODO "Swarming" ie good savepoints to explore from instead of starting tile
+
+* Train a Q model
+
+#+begin_src
+python main.py --train_from_replays
+#+end_src
+
+Trains from the replay of all replays in the replay folder, in order.
+** TODO Random sampling, repeated sampling, better sampling
+
+
+* Running
+
+Running train_from_replays will generate a pkl file for the resulting Q state. Load that file to have the AI agent play:
+
+#+begin_src 
+python main.py --initial_q_state <q_state_file>
+#+end_src
+
+** Manual mode
+
+#+begin_src
+python main.py --manual
+#+end_src
