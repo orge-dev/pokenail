@@ -77,7 +77,9 @@ def monitor_episodes(episodes_dir="episodes", polling_interval=5):
         time.sleep(polling_interval)
 
 
-def analyze_episodes(episodes_dir="episodes"):
+# In utils.py, modify the analyze_episodes function:
+
+def analyze_episodes(episodes_dir="episodes", skip_viz=False):
     """Read all episode files and print statistics."""
     print("\nEpisode Statistics:")
     print("-" * 50)
@@ -96,20 +98,17 @@ def analyze_episodes(episodes_dir="episodes"):
                 with open(filepath, "rb") as f:
                     stats = pickle.load(f)
 
-                    # Create visualizations directory if it doesn't exist
-                    os.makedirs("visualizations", exist_ok=True)
+                    if not skip_viz:
+                        # Create visualizations directory if it doesn't exist
+                        os.makedirs("visualizations", exist_ok=True)
 
-                    # Generate visualization for this episode
-                    path_save = (
-                        f"visualizations/{filename.replace('.pkl', '_path.png')}"
-                    )
-                    heat_save = (
-                        f"visualizations/{filename.replace('.pkl', '_heatmap.png')}"
-                    )
-                    visualize_path(stats, path_save)
-                    visualize_heatmap(stats, heat_save)
-                    print(f"Path visualization saved to {path_save}")
-                    print(f"Heatmap visualization saved to {heat_save}")
+                        # Generate visualization for this episode
+                        path_save = f"visualizations/{filename.replace('.pkl', '_path.png')}"
+                        heat_save = f"visualizations/{filename.replace('.pkl', '_heatmap.png')}"
+                        visualize_path(stats, path_save)
+                        visualize_heatmap(stats, heat_save)
+                        print(f"Path visualization saved to {path_save}")
+                        print(f"Heatmap visualization saved to {heat_save}")
 
                     if stats["steps_to_battle"] is not None:
                         battles_found += 1
@@ -118,21 +117,20 @@ def analyze_episodes(episodes_dir="episodes"):
                             best_battle_reward = stats["total_reward"]
                             best_episode = filename
 
-                    print(f"\nEpisode {filename}:")
-                    print(f"Total steps: {stats['total_steps']}")
-                    print(f"Final position: {stats['final_position']}")
-                    print(
-                        f"Total unique positions visited: {len(stats['visited_coords'])}"
-                    )
-                    print(f"Battle found: {stats['battle']}")
-                    print(f"Battle reward applied: {stats['battle_reward_applied']}")
-                    print(f"Last distance reward: {stats['last_distance_reward']}")
-                    print(f"Total reward: {stats['total_reward']:.2f}")
+                    if not skip_viz:
+                        print(f"\nEpisode {filename}:")
+                        print(f"Total steps: {stats['total_steps']}")
+                        print(f"Final position: {stats['final_position']}")
+                        print(f"Total unique positions visited: {len(stats['visited_coords'])}")
+                        print(f"Battle found: {stats['battle']}")
+                        print(f"Battle reward applied: {stats['battle_reward_applied']}")
+                        print(f"Last distance reward: {stats['last_distance_reward']}")
+                        print(f"Total reward: {stats['total_reward']:.2f}")
 
-                    if stats["steps_to_battle"] is not None:
-                        print(f"Battle found at step {stats['steps_to_battle']}")
-                    else:
-                        print("No battle found")
+                        if stats["steps_to_battle"] is not None:
+                            print(f"Battle found at step {stats['steps_to_battle']}")
+                        else:
+                            print("No battle found")
             except EOFError:
                 pass
 
@@ -146,6 +144,12 @@ def analyze_episodes(episodes_dir="episodes"):
         print(f"Steps to battle: {best_battle_steps}")
         print(f"Reward: {best_battle_reward:.2f}")
 
+# And modify the main block:
 
 if __name__ == "__main__":
-    analyze_episodes()
+    import argparse
+    parser = argparse.ArgumentParser(description="Analyze episode statistics")
+    parser.add_argument("--viz", action="store_true", help="Skip visualization generation")
+    args = parser.parse_args()
+    
+    analyze_episodes(skip_viz=not args.viz)

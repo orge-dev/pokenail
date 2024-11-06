@@ -42,7 +42,7 @@ python main.py --manual
 
 =viz_rewards.py= will visualize the rewards on each tile integrated over all replays in the replays folder
 
-=utils.py= can be used to debug individual episodes vis and stats.
+=utils.py= can be used to quickly see summary stats, and can also visually debug individual episodes  with the --viz option
 
 ** TODO Integrate streamwrapper
 
