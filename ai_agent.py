@@ -31,21 +31,18 @@ class AIAgent:
     def update_q_table(self, state, action, next_state, reward):
         """Updates Q-table using Q-learning algorithm"""
         # Convert dict states to tuples for hashing
-        state_tuple = tuple(state.items())
-        next_state_tuple = tuple(next_state.items())
-
         # Get index of the action taken
         action_index = Actions.list().index(action)
 
         # Get max Q-value for next state
-        best_next_action_value = np.max(self.q_table[next_state_tuple])
+        best_next_action_value = np.max(self.q_table[next_state])
 
         # Q-learning update formula
-        current_q = self.q_table[state_tuple][action_index]
+        current_q = self.q_table[state][action_index]
         new_q = current_q + self.learning_rate * (
             reward + self.discount_factor * best_next_action_value - current_q
         )
-        self.q_table[state_tuple][action_index] = new_q
+        self.q_table[state][action_index] = new_q
 
     def train_from_replays(self, replays_dir="replays"):
         """Train agent using stored replay experiences"""

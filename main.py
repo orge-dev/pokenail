@@ -35,7 +35,7 @@ def parse_arguments():
         "--initial_q_state",
         type=str,
         help="Path to initial Q-state file to load",
-        default=None
+        default=None,
     )
     return parser.parse_args()
 
@@ -150,7 +150,6 @@ def run_episode(args, environment=None, exploration_rate=1.0):
 def main():
     args = parse_arguments()
 
-
     initial_q_state = args.initial_q_state
 
     # Setup folders where we save stuff
@@ -180,7 +179,7 @@ def main():
                     episode_id = run_episode(
                         (i + 1, args.episode_length, args.headless, initial_q_state),
                         environment=environment,
-                        exploration_rate=0.0 # use q table when not headless, so we see AI actions
+                        exploration_rate=0.0,  # use q table when not headless, so we see AI actions
                     )
                     episode_ids.append(episode_id)
             finally:
@@ -188,9 +187,7 @@ def main():
         else:
             # Parallel processing for multiple processes or headless mode
             num_processes = args.processes or cpu_count()
-            print(
-                f"Running {args.episodes} episodes using {num_processes} processes"
-            )
+            print(f"Running {args.episodes} episodes using {num_processes} processes")
 
             episode_args = [
                 (i + 1, args.episode_length, args.headless, initial_q_state)

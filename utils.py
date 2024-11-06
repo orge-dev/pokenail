@@ -79,6 +79,7 @@ def monitor_episodes(episodes_dir="episodes", polling_interval=5):
 
 # In utils.py, modify the analyze_episodes function:
 
+
 def analyze_episodes(episodes_dir="episodes", skip_viz=False):
     """Read all episode files and print statistics."""
     print("\nEpisode Statistics:")
@@ -103,8 +104,12 @@ def analyze_episodes(episodes_dir="episodes", skip_viz=False):
                         os.makedirs("visualizations", exist_ok=True)
 
                         # Generate visualization for this episode
-                        path_save = f"visualizations/{filename.replace('.pkl', '_path.png')}"
-                        heat_save = f"visualizations/{filename.replace('.pkl', '_heatmap.png')}"
+                        path_save = (
+                            f"visualizations/{filename.replace('.pkl', '_path.png')}"
+                        )
+                        heat_save = (
+                            f"visualizations/{filename.replace('.pkl', '_heatmap.png')}"
+                        )
                         visualize_path(stats, path_save)
                         visualize_heatmap(stats, heat_save)
                         print(f"Path visualization saved to {path_save}")
@@ -121,9 +126,13 @@ def analyze_episodes(episodes_dir="episodes", skip_viz=False):
                         print(f"\nEpisode {filename}:")
                         print(f"Total steps: {stats['total_steps']}")
                         print(f"Final position: {stats['final_position']}")
-                        print(f"Total unique positions visited: {len(stats['visited_coords'])}")
+                        print(
+                            f"Total unique positions visited: {len(stats['visited_coords'])}"
+                        )
                         print(f"Battle found: {stats['battle']}")
-                        print(f"Battle reward applied: {stats['battle_reward_applied']}")
+                        print(
+                            f"Battle reward applied: {stats['battle_reward_applied']}"
+                        )
                         print(f"Last distance reward: {stats['last_distance_reward']}")
                         print(f"Total reward: {stats['total_reward']:.2f}")
 
@@ -144,12 +153,16 @@ def analyze_episodes(episodes_dir="episodes", skip_viz=False):
         print(f"Steps to battle: {best_battle_steps}")
         print(f"Reward: {best_battle_reward:.2f}")
 
+
 # And modify the main block:
 
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser(description="Analyze episode statistics")
-    parser.add_argument("--viz", action="store_true", help="Skip visualization generation")
+    parser.add_argument(
+        "--viz", action="store_true", help="Skip visualization generation"
+    )
     args = parser.parse_args()
-    
+
     analyze_episodes(skip_viz=not args.viz)

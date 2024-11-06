@@ -38,7 +38,7 @@ class EnvironmentState:
     position: tuple
     battle: bool
     prev_position: tuple
-    
+
 
 class env_red(AbstractEnvironment):
     def __init__(self, learning_rate=0.05, discount_factor=0.9, headless=False):
@@ -63,7 +63,9 @@ class env_red(AbstractEnvironment):
         self.last_distance_reward = None
         self.position = self.controller.get_global_coords()
 
-        initial_state = EnvironmentState(position=self.position, battle=self.battle, prev_position=None)
+        initial_state = EnvironmentState(
+            position=self.position, battle=self.battle, prev_position=None
+        )
         self.previous_state = initial_state
         return initial_state
 
