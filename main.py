@@ -69,7 +69,7 @@ def run_ai_mode(
         if (
             step % 1000 == 0 or step == episode_length
         ):  # Every 1000 steps or at episode end
-            current_pos = tuple(next_state["position"])
+            current_pos = next_state.position
             distance, distance_reward = environment.calculate_distance_metrics(
                 current_pos
             )
@@ -126,7 +126,7 @@ def run_episode(args, environment=None, exploration_rate=1.0):
             next_state, reward, done, _ = environment.step(action, False)
 
             if step % 1000 == 0 or step == episode_length:
-                current_pos = tuple(next_state["position"])
+                current_pos = next_state.position
                 distance, distance_reward = environment.calculate_distance_metrics(
                     current_pos
                 )
@@ -179,7 +179,7 @@ def main():
                     episode_id = run_episode(
                         (i + 1, args.episode_length, args.headless, initial_q_state),
                         environment=environment,
-                        exploration_rate=0.0,  # use q table when not headless, so we see AI actions
+                        exploration_rate=0.2,  # use q table when not headless, so we see AI actions
                     )
                     episode_ids.append(episode_id)
             finally:
