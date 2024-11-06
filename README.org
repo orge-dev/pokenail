@@ -8,7 +8,10 @@ python main.py --processes 0 --headless
 
 to run headless, with processes = num cpus, and saving replay data (see env.replay_buffer) to the replays folder.
 
+Note: training will run for the episode_length parameter, or it will stop early on encountering a battle. You can see logs of battles occuring.
+
 ** TODO "Swarming" ie good savepoints to explore from instead of starting tile
+
 
 * Train a Q model
 
@@ -37,8 +40,11 @@ python main.py --manual
 
 * Visualizing results
 
-=viz_rewards.py= will visualize the rewards on each tile for replays in the replays folder
+=viz_rewards.py= will visualize the rewards on each tile integrated over all replays in the replays folder
+
+=utils.py= can be used to debug individual episodes vis and stats.
 
 ** TODO Integrate streamwrapper
 
 Maybe do streamwrapper + heatmap?
+

@@ -23,7 +23,6 @@ class AIAgent:
 
     def select_action(self, state):
         """Selects the action with the highest Q-value from the Q-table for a given state."""
-        state = tuple(state.items())
         if np.random.random() < self.exploration_rate:
             return np.random.choice(Actions.list())
         action_index = np.argmax(self.q_table[state])

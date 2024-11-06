@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 import os
 import pickle
 from game_controller import GameController
@@ -31,6 +32,14 @@ class AbstractEnvironment(ABC):
         return local_to_global(y_pos, x_pos, map_n)
 
 
+# This is the information we save to replays and train from
+@dataclass(frozen=True)
+class EnvironmentState:
+    position: tuple
+    battle: bool
+    prev_position: tuple
+    
+
 class env_red(AbstractEnvironment):
     def __init__(self, learning_rate=0.05, discount_factor=0.9, headless=False):
         self.controller = GameController(ROM_PATH, EMULATION_SPEED, headless=headless)
@@ -54,10 +63,7 @@ class env_red(AbstractEnvironment):
         self.last_distance_reward = None
         self.position = self.controller.get_global_coords()
 
-        initial_state = {
-            "position": self.position,
-            "battle": self.battle,
-        }
+        initial_state = EnvironmentState(position=self.position, battle=self.battle, prev_position=None)
         self.previous_state = initial_state
         return initial_state
 
@@ -119,14 +125,14 @@ class env_red(AbstractEnvironment):
         if self.battle and self.steps_to_battle is None:
             self.steps_to_battle = self.current_step
 
-        position = self.controller.get_global_coords()
-        step_reward = self.calculate_reward(position)
+        step_reward = self.calculate_reward(self.position)
         self.total_reward += step_reward
 
-        next_state = {
-            "position": position,
-            "battle": self.battle,
-        }
+        next_state = EnvironmentState(
+            position=self.position,
+            battle=self.battle,
+            prev_position=self.previous_state.position,
+        )
 
         if not manual and agent is not None:
             agent.update_q_table(self.previous_state, action, next_state, step_reward)
