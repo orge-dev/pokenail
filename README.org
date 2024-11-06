@@ -33,3 +33,12 @@ python main.py --initial_q_state <q_state_file>
 #+begin_src
 python main.py --manual
 #+end_src
+
+
+* Visualizing results
+
+=viz_rewards.py= will visualize the rewards on each tile for replays in the replays folder
+
+** TODO Integrate streamwrapper
+
+Maybe do streamwrapper + heatmap?
