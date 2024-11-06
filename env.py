@@ -131,7 +131,6 @@ class env_red(AbstractEnvironment):
         if not manual and agent is not None:
             agent.update_q_table(self.previous_state, action, next_state, step_reward)
 
-        self.previous_state = next_state
         done = self.battle and not manual  # dont end on battle if manual
 
         experience = {
@@ -141,8 +140,10 @@ class env_red(AbstractEnvironment):
             "next_state": next_state,
             "done": done,
         }
+
         self.replay_buffer.add(experience)
 
+        self.previous_state = next_state
         return next_state, step_reward, done, {}
 
     def update_q_table(self, state, action, next_state, reward):
