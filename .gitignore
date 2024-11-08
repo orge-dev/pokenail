@@ -1,5 +1,6 @@
 red.gb.ram
 red.gb
+game_state.save
 notes.org
 agent_state.pkl
 episodes2
