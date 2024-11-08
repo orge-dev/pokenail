@@ -17,7 +17,7 @@ class GameController:
     def save_state(self, state_filename="game_state.save"):
         with open(state_filename, "wb") as f:
             self.pyboy.save_state(f)
-        logging.info("Game state saved to %s", state_filename)
+        #logging.info("Game state saved to %s", state_filename)
 
     def load_state(self, state_filename="squirt_two.save"):
         with open(state_filename, "rb") as f:

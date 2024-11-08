@@ -94,8 +94,12 @@ def run_manual_mode():
     environment = env_red()
     environment.reset()
     done = False
+    step = 0
     while not done:
+        step += 1
         next_state, reward, done, _ = environment.step(manual=True)
+        if step % 50 == 0:
+            environment.controller.save_state()
 
 
 def run_episode(args, environment=None, exploration_rate=1.0):

@@ -1,2 +1,0 @@
-# Pokemon-Tonail
-Fresh implementation 
