@@ -38,6 +38,8 @@ class EnvironmentState:
     position: tuple
     battle: bool
     prev_position: tuple
+    has_oaks_parcel: bool
+    has_pokedex: bool
 
 
 class env_red(AbstractEnvironment):
@@ -62,9 +64,15 @@ class env_red(AbstractEnvironment):
         self.steps_to_battle = None
         self.last_distance_reward = None
         self.position = self.controller.get_global_coords()
+        self.previous_items = dict()
+        self.nearly_visited_coords = set()
 
         initial_state = EnvironmentState(
-            position=self.position, battle=self.battle, prev_position=None
+            position=self.position,
+            battle=self.battle,
+            prev_position=None,
+            has_oaks_parcel="Oak's Parcel" in self.controller.get_items(),
+            has_pokedex=self.controller.has_pokedex(),
         )
         self.previous_state = initial_state
         return initial_state
@@ -124,6 +132,21 @@ class env_red(AbstractEnvironment):
         self.position = self.controller.get_global_coords()
         self.visited_coords.add(tuple(self.position))  # Add this line
 
+        # Add 5x5 area around current position to nearly_visited_coords
+        for dy in range(-2, 3):  # -2 to 2 for 5x5 area
+            for dx in range(-2, 3):
+                nearby_pos = (self.position[0] + dy, self.position[1] + dx)
+                self.nearly_visited_coords.add(nearby_pos)
+
+        # Check for new/changed items
+        current_items = self.controller.get_items()
+        for item_name, quantity in current_items.items():
+            prev_quantity = self.previous_items.get(item_name, 0)
+            if quantity != prev_quantity:
+                gained = quantity - prev_quantity
+                print(f"\nGained {gained}x {item_name}!")
+        self.previous_items = current_items
+
         if self.battle and self.steps_to_battle is None:
             self.steps_to_battle = self.current_step
 
@@ -134,17 +157,26 @@ class env_red(AbstractEnvironment):
             position=self.position,
             battle=self.battle,
             prev_position=self.previous_state.position,
+            has_oaks_parcel="Oak's Parcel" in self.controller.get_items(),
+            has_pokedex=self.controller.has_pokedex(),
         )
+
+        if self.controller.has_pokedex():
+            print("has pokedex")
 
         if not manual and agent is not None:
             agent.update_q_table(self.previous_state, action, next_state, step_reward)
 
         done = self.battle and not manual  # dont end on battle if manual
 
+        step_reward = 0  # TODO: Remove
+        cumulative_reward = len(self.nearly_visited_coords)
+
         experience = {
             "state": self.previous_state,
             "action": action,
             "reward": step_reward,
+            "cumulative_reward": cumulative_reward,
             "next_state": next_state,
             "done": done,
         }
@@ -152,7 +184,7 @@ class env_red(AbstractEnvironment):
         self.replay_buffer.add(experience)
 
         self.previous_state = next_state
-        return next_state, step_reward, done, {}
+        return next_state, step_reward, cumulative_reward, done, {}
 
     def update_q_table(self, state, action, next_state, reward):
         """Updates the Q-table for the current environment state and reward."""

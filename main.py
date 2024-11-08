@@ -97,7 +97,7 @@ def run_manual_mode():
     step = 0
     while not done:
         step += 1
-        next_state, reward, done, _ = environment.step(manual=True)
+        next_state, reward, cumulative_reward, done, _ = environment.step(manual=True)
         if step % 50 == 0:
             environment.controller.save_state()
 
@@ -127,7 +127,7 @@ def run_episode(args, environment=None, exploration_rate=1.0):
                 ai_agent.save_state(f"checkpoints/agent_state_{episode_id}.pkl")
 
             action = ai_agent.select_action(state)
-            next_state, reward, done, _ = environment.step(action, False)
+            next_state, reward, cumulative_reward, done, _ = environment.step(action, False)
 
             if step % 1000 == 0 or step == episode_length:
                 current_pos = next_state.position

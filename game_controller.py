@@ -4,6 +4,8 @@ from global_map import local_to_global
 
 logging.basicConfig(level=logging.INFO)
 
+DEFAULT_STATE = "saves/squirt_two.save"
+
 
 class GameController:
     def __init__(self, rom_path, emulation_speed=1.0, headless=False):
@@ -14,12 +16,68 @@ class GameController:
         self.pyboy.set_emulation_speed(emulation_speed)
         logging.info("GameController initialized with ROM: %s", rom_path)
 
+    def get_items(self):
+        """Returns a dict of item counts from memory."""
+        items = {}
+        # Items start at D31E, each entry is item ID followed by quantity
+        for i in range(20):  # Check first 20 item slots
+            addr = 0xD31E + (i * 2)
+            item_id = self.read_m(addr)
+            if item_id != 0:  # 0 means empty slot
+                quantity = self.read_m(addr + 1)
+                item_name = self.get_item_name(item_id)
+                print("have item", item_name, quantity)
+                items[item_name] = quantity
+        return items
+
+    def has_pokedex(self):
+        """Returns True if player has received the Pokedex."""
+        # Debug print more candidate addresses
+        addresses = [
+            # Event flags region
+            0xD747, 0xD748, 0xD749, 0xD74A,
+            # Game progress flags
+            0xD72D, 0xD72E, 0xD72F,
+            # Badges/items obtained flags  
+            0xCD3D, 0xCD3E, 0xCD3F,
+        ]
+        values = {hex(addr): self.read_m(addr) for addr in addresses}
+        print(f"Pokedex flag debug - Memory values: {values}")
+        return False  # For now, just print debug info
+
+    def get_item_name(self, item_id):
+        """Convert item ID to name. Add more items as needed."""
+        item_names = {
+            1: "Master Ball",
+            2: "Ultra Ball",
+            3: "Great Ball",
+            4: "Poké Ball",
+            5: "Town Map",
+            6: "Bicycle",
+            7: "????",
+            8: "Safari Ball",
+            9: "Pokédex",
+            10: "Moon Stone",
+            11: "Antidote",
+            12: "Burn Heal",
+            13: "Ice Heal",
+            14: "Awakening",
+            15: "Parlyz Heal",
+            16: "Full Restore",
+            17: "Max Potion",
+            18: "Hyper Potion",
+            19: "Super Potion",
+            20: "Potion",
+            70: "Oak's Parcel",
+        }
+        return item_names.get(item_id, f"Unknown Item {item_id}")
+
     def save_state(self, state_filename="game_state.save"):
         with open(state_filename, "wb") as f:
             self.pyboy.save_state(f)
-        #logging.info("Game state saved to %s", state_filename)
+        # logging.info("Game state saved to %s", state_filename)
 
-    def load_state(self, state_filename="squirt_two.save"):
+    def load_state(self, state_filename=DEFAULT_STATE):
         with open(state_filename, "rb") as f:
             self.pyboy.load_state(f)
         logging.info("Game state loaded from %s", state_filename)
