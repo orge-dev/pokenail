@@ -44,7 +44,7 @@ class AIAgent:
         )
         self.q_table[state][action_index] = new_q
 
-    def train_from_replays(self, replays_dir="replays"):
+    def train_from_replays(self, replays_dir="replays", use_cumulative_rewards=True):
         """Train agent using stored replay experiences"""
         print("Training from replay files...")
         for filename in os.listdir(replays_dir):
@@ -54,11 +54,22 @@ class AIAgent:
                 replay_buffer.load(replay_path)
 
                 print(f"Training from {filename}...")
-                for experience in replay_buffer.buffer:
+
+                experiences_reversed = replay_buffer.buffer[::-1]
+                for exp_i, experience in enumerate(experiences_reversed):
                     state = experience["state"]
                     action = experience["action"]
                     next_state = experience["next_state"]
-                    reward = experience["reward"]
+                    step_reward = experience["reward"]
+                    cumulative_reward = experience["cumulative_reward"]
+                    # cumulative reward is designed to only count on the last step of the episode
+                    if use_cumulative_rewards:
+                        if exp_i == 0:  
+                            reward = cumulative_reward
+                        else:
+                            reward = 0
+                    else:
+                        reward = step_reward
                     self.update_q_table(state, action, next_state, reward)
 
     def save_state(self, filename="agent_state.pkl", do_print=False):
