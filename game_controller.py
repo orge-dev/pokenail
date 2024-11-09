@@ -26,14 +26,12 @@ class GameController:
             if item_id != 0:  # 0 means empty slot
                 quantity = self.read_m(addr + 1)
                 item_name = self.get_item_name(item_id)
-                #print("have item", item_name, quantity)
+                # print("have item", item_name, quantity)
                 items[item_name] = quantity
         return items
 
-
     def mem(self, addr):
         return self.read_m(addr)
-
 
     def get_item_name(self, item_id):
         """Convert item ID to name. Add more items as needed."""

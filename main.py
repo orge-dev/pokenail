@@ -18,7 +18,7 @@ def parse_arguments():
         "--episodes", type=int, default=1000, help="Number of episodes to run"
     )
     parser.add_argument(
-        "--episode_length", type=int, default=1000, help="Steps per episode"
+        "--episode_length", type=int, default=4000, help="Steps per episode"
     )
     parser.add_argument(
         "--train_from_replays",
@@ -121,13 +121,17 @@ def run_episode(args, environment=None, exploration_rate=1.0):
 
         state = environment.reset()
         step = 0
+        final_cumulative_reward = None
         while step < episode_length:
             step += 1
             if step % 100 == 0:
                 ai_agent.save_state(f"checkpoints/agent_state_{episode_id}.pkl")
 
             action = ai_agent.select_action(state)
-            next_state, reward, cumulative_reward, done, _ = environment.step(action, False)
+            next_state, reward, cumulative_reward, done, _ = environment.step(
+                action, False
+            )
+            final_cumulative_reward = cumulative_reward  # Update the final value
 
             if step % 1000 == 0 or step == episode_length:
                 current_pos = next_state.position
@@ -142,6 +146,9 @@ def run_episode(args, environment=None, exploration_rate=1.0):
             if done:
                 break
 
+        print(
+            f"\nEpisode {episode_num} finished with cumulative reward: {final_cumulative_reward}"
+        )
         ai_agent.save_state(f"checkpoints/agent_state_{episode_id}.pkl")
         environment.save_episode_stats(episode_id)
         return episode_id
@@ -164,9 +171,14 @@ def main():
         if initial_q_state:
             agent.load_state(initial_q_state)
         agent.train_from_replays()
-        agent.save_state(
-            f"checkpoints/from_replays/agent_state_{generate_timestamped_id()}.pkl",
-            do_print=True,
+        q_state_filename = (
+            f"checkpoints/from_replays/agent_state_{generate_timestamped_id()}.pkl"
+        )
+        agent.save_state(q_state_filename, do_print=True)
+
+        run_episode(
+            (1, 10000, False, q_state_filename),
+            exploration_rate=0.2,  # use q table when not headless, so we see AI actions
         )
 
     elif args.manual:

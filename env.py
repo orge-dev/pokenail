@@ -72,7 +72,7 @@ class env_red(AbstractEnvironment):
             battle=self.battle,
             prev_position=None,
             has_oaks_parcel=self.has_oaks_parcel(),
-            has_pokedex=self.has_pokedex()
+            has_pokedex=self.has_pokedex(),
         )
         self.previous_state = initial_state
         return initial_state
@@ -81,9 +81,8 @@ class env_red(AbstractEnvironment):
         return "Oak's Parcel" in self.controller.get_items()
 
     def has_pokedex(self):
-        # TODO: Probably use MissableObject from pokemonred_puffer or something similar 
+        # TODO: Probably use MissableObject from pokemonred_puffer or something similar
         pokedex_sprite_byte = self.controller.mem(0xD5A6 + 5)
-        print("sprite bte", pokedex_sprite_byte)
         pokedex_sprite_bit = pokedex_sprite_byte >> 7
         return bool(pokedex_sprite_bit)
 
@@ -168,7 +167,7 @@ class env_red(AbstractEnvironment):
             battle=self.battle,
             prev_position=self.previous_state.position,
             has_oaks_parcel=self.has_oaks_parcel(),
-            has_pokedex=self.has_pokedex()
+            has_pokedex=self.has_pokedex(),
         )
 
         if not manual and agent is not None:
@@ -176,7 +175,7 @@ class env_red(AbstractEnvironment):
 
         done = self.battle and not manual  # dont end on battle if manual
 
-        step_reward = 0  # TODO: Remove
+        #step_reward = 0  # TODO: Remove
         cumulative_reward = len(self.nearly_visited_coords)
 
         experience = {

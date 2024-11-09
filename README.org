@@ -13,15 +13,17 @@ Note: training will run for the episode_length parameter, or it will stop early 
 ** TODO "Swarming" ie good savepoints to explore from instead of starting tile
 
 
-* Train a Q model
+* Train (and run) a Q model
 
 #+begin_src
 python main.py --train_from_replays
 #+end_src
 
 Trains from the replay of all replays in the replay folder, in order.
-** TODO Random sampling, repeated sampling, better sampling
+It will then print out the filename containing the Q table of the model.
+Finally, it will run the agent with the Q table and an exploration rate of 20%
 
+** TODO Random sampling, repeated sampling, better sampling
 
 * Running
 
