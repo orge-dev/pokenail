@@ -3,7 +3,9 @@ import pickle
 from collections import defaultdict
 from actions import Actions
 from replay_buffer import ReplayBuffer
+import random
 import os
+import tqdm
 
 
 class AIAgent:
@@ -44,33 +46,45 @@ class AIAgent:
         )
         self.q_table[state][action_index] = new_q
 
-    def train_from_replays(self, replays_dir="replays", use_cumulative_rewards=True):
+    def train_from_replays(
+        self, replays_dir="replays", use_cumulative_rewards=False, n_experiences=1000000
+    ):
         """Train agent using stored replay experiences"""
-        print("Training from replay files...")
-        for filename in os.listdir(replays_dir):
+
+        all_experiences = []
+        print("Loading replay files")
+        for filename in tqdm.tqdm(list(os.listdir(replays_dir))):
             if filename.endswith(".pkl"):
-                replay_path = os.path.join(replays_dir, filename)
                 replay_buffer = ReplayBuffer()
-                replay_buffer.load(replay_path)
+                replay_buffer.load(os.path.join(replays_dir, filename))
+                assert len(replay_buffer.buffer) > 1
+                exps = [
+                    (experience, False) for experience in replay_buffer.buffer[:-1]
+                ] + [(replay_buffer.buffer[-1], True)]
+                all_experiences.extend(exps)
 
-                print(f"Training from {filename}...")
+        print(f"Collected {len(all_experiences)} experiences")
 
-                experiences_reversed = replay_buffer.buffer[::-1]
-                for exp_i, experience in enumerate(experiences_reversed):
-                    state = experience["state"]
-                    action = experience["action"]
-                    next_state = experience["next_state"]
-                    step_reward = experience["reward"]
-                    cumulative_reward = experience["cumulative_reward"]
-                    # cumulative reward is designed to only count on the last step of the episode
-                    if use_cumulative_rewards:
-                        if exp_i == 0:  
-                            reward = cumulative_reward
-                        else:
-                            reward = 0
-                    else:
-                        reward = step_reward
-                    self.update_q_table(state, action, next_state, reward)
+
+        print("Training from random sampling of experiences")
+        samples = random.sample(
+            all_experiences, min(n_experiences, len(all_experiences))
+        )
+        for experience, is_last_step_of_episode in tqdm.tqdm(samples):
+            state = experience["state"]
+            action = experience["action"]
+            next_state = experience["next_state"]
+            step_reward = experience["reward"]
+            cumulative_reward = experience["cumulative_reward"]
+            # cumulative reward is designed to only count on the last step of the episode
+            if use_cumulative_rewards:
+                if is_last_step_of_episode:
+                    reward = cumulative_reward
+                else:
+                    reward = 0
+            else:
+                reward = step_reward
+            self.update_q_table(state, action, next_state, reward)
 
     def save_state(self, filename="agent_state.pkl", do_print=False):
         """Saves the Q-table."""
