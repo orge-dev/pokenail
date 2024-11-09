@@ -71,11 +71,21 @@ class env_red(AbstractEnvironment):
             position=self.position,
             battle=self.battle,
             prev_position=None,
-            has_oaks_parcel="Oak's Parcel" in self.controller.get_items(),
-            has_pokedex=self.controller.has_pokedex(),
+            has_oaks_parcel=self.has_oaks_parcel(),
+            has_pokedex=self.has_pokedex()
         )
         self.previous_state = initial_state
         return initial_state
+
+    def has_oaks_parcel(self):
+        return "Oak's Parcel" in self.controller.get_items()
+
+    def has_pokedex(self):
+        # TODO: Probably use MissableObject from pokemonred_puffer or something similar 
+        pokedex_sprite_byte = self.controller.mem(0xD5A6 + 5)
+        print("sprite bte", pokedex_sprite_byte)
+        pokedex_sprite_bit = pokedex_sprite_byte >> 7
+        return bool(pokedex_sprite_bit)
 
     def calculate_distance_metrics(self, position):
         target_position = (309, 99)
@@ -157,12 +167,9 @@ class env_red(AbstractEnvironment):
             position=self.position,
             battle=self.battle,
             prev_position=self.previous_state.position,
-            has_oaks_parcel="Oak's Parcel" in self.controller.get_items(),
-            has_pokedex=self.controller.has_pokedex(),
+            has_oaks_parcel=self.has_oaks_parcel(),
+            has_pokedex=self.has_pokedex()
         )
-
-        if self.controller.has_pokedex():
-            print("has pokedex")
 
         if not manual and agent is not None:
             agent.update_q_table(self.previous_state, action, next_state, step_reward)

@@ -26,24 +26,14 @@ class GameController:
             if item_id != 0:  # 0 means empty slot
                 quantity = self.read_m(addr + 1)
                 item_name = self.get_item_name(item_id)
-                print("have item", item_name, quantity)
+                #print("have item", item_name, quantity)
                 items[item_name] = quantity
         return items
 
-    def has_pokedex(self):
-        """Returns True if player has received the Pokedex."""
-        # Debug print more candidate addresses
-        addresses = [
-            # Event flags region
-            0xD747, 0xD748, 0xD749, 0xD74A,
-            # Game progress flags
-            0xD72D, 0xD72E, 0xD72F,
-            # Badges/items obtained flags  
-            0xCD3D, 0xCD3E, 0xCD3F,
-        ]
-        values = {hex(addr): self.read_m(addr) for addr in addresses}
-        print(f"Pokedex flag debug - Memory values: {values}")
-        return False  # For now, just print debug info
+
+    def mem(self, addr):
+        return self.read_m(addr)
+
 
     def get_item_name(self, item_id):
         """Convert item ID to name. Add more items as needed."""
