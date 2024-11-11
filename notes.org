@@ -1,0 +1,275 @@
+
+** TODO Fix cumulative reward training for exploration
+:LOGBOOK:
+CLOCK: [2024-11-10 Sun 19:06]--[2024-11-10 Sun 19:37] =>  0:31
+:END:
+
+*** TODO Rescale cumulative rewards retroactively
+
+I.e., now we have:
+
+#+begin_src bash
+Number of episodes: 1000
+Min reward: 721.00
+Max reward: 1374.00
+Mean reward: 976.41
+Median reward: 978.50
+Std dev: 82.69
+25th percentile: 919.00
+75th percentile: 1036.00
+90th percentile: 1080.00
+#+end_src
+
+
+The 2x reward diff for the worse vs best episode is bad training. The reward signal is not clear enough. We should bias towards top 5% (TODO? hyperparam) of results, other cumulative rewards should be very low. 0?
+
+Also, reward is very low even at max? Need to start using policy during training to do better than random.
+
+Note: ~2200 nearly visited coords (cumulative reward) in the area before you pass the sleepy man.
+Including trying to go to elite 4, not including all buildings 
+
+cumulative reward 3337 after visiting like whole map without pokedex
+
+**** 60 file replay with < 1080 cumulative rewards clamped to 0:
+
+checkpoints/from_replays/agent_state_20241110_192541_XDcLS5HZ.pkl
+
+Performance seems ok? 
+
+**** 1000 file replay, same rewards as above
+checkpoints/from_replays/agent_state_20241110_192800_dOzEJYF6.pkl
+
+Struggles in battles, need to fix menu state probably
+
+
+** TODO Use policy with non-1.0 exploration during training
+
+** TODO Go through pokemonred_puffer read_m calls, note important addrs
+like 
+#+begin_src python
+if self.read_m("wCurrentMenuItem") == 2:
+#+end_src
+
+Note: lookup of this symbol fails, but we can read from the hex addr
+
+** TODO Integrate streamwrapper
+
+** TODO Fix battle state
+:LOGBOOK:
+CLOCK: [2024-11-10 Sun 19:37]--[2024-11-10 Sun 19:53] =>  0:16
+:END:
+** TODO Eval models performance (in terms of cumulative reward) after training / on-demand
+
+** TODO  better sampling
+
+
+** TODO Set up training loop where we get top 10% performance on cumulative_reward, train with other runs clamped, then generate new training data with the model at exploration rate = ??
+** TODO Hindsight experience replay?
+** TODO "Swarming" ie good savepoints to explore from instead of starting tile
+
+Probably should do checkpoints when training and compare performance. Don't want to overtrain right 🤔?
+* Ideas
+
+** Rewrite it in Rust
+
+Not just a joke, it could actually make training a lot faster, without needing a GPU. (Assuming we stick with Q learning for a while. May also make some things faster even after going GPU though)
+
+
+* gipity archives
+:PROPERTIES:
+:VISIBILITY: folded
+:END:
+
+
+** Write a rust program to ingest all the replay pkl files, save them to a datafusion database, and query statistics on them
+Here's a concise Rust program that handles replay pkl files using DataFusion:
+
+#+begin_src rust
+use datafusion::prelude::*;
+use serde::Deserialize;
+use std::fs;
+use std::path::Path;
+
+#[derive(Deserialize)]
+struct Replay {
+    // Define your replay structure here
+    timestamp: i64,
+    player_name: String,
+    // Add other fields
+}
+
+async fn process_replays() -> Result<(), Box<dyn std::error::Error>> {
+    let ctx = SessionContext::new();
+    
+    // Create table schema
+    let schema = Schema::new(vec![
+        Field::new("timestamp", DataType::Int64, false),
+        Field::new("player_name", DataType::Utf8, false),
+        // Add other fields
+    ]);
+
+    // Process all pkl files
+    let paths = fs::read_dir("./replays")?;
+    let mut data = Vec::new();
+    
+    for path in paths {
+        let file_path = path?.path();
+        if file_path.extension().unwrap_or_default() == "pkl" {
+            let bytes = fs::read(&file_path)?;
+            let replay: Replay = serde_pickle::from_slice(&bytes, Default::default())?;
+            data.push(vec![
+                ScalarValue::Int64(Some(replay.timestamp)),
+                ScalarValue::Utf8(Some(replay.player_name)),
+                // Add other fields
+            ]);
+        }
+    }
+
+    // Create DataFrame
+    let df = ctx.create_dataframe(vec![
+        Arc::new(MemTable::try_new(schema, vec![data])?),
+    ])?;
+
+    // Example queries
+    df.filter(col("timestamp").gt(lit(1000)))?
+        .select(vec![col("player_name")])?
+        .show()
+        .await?;
+
+    Ok(())
+}
+
+fn main() {
+    tokio::runtime::Runtime::new()
+        .unwrap()
+        .block_on(process_replays())
+        .unwrap();
+}
+#+end_src
+
+Add necessary dependencies to Cargo.toml:
+
+#+begin_src toml
+[dependencies]
+datafusion = "8.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_pickle = "1.1"
+tokio = { version = "1.0", features = ["full"] }
+#+end_src
+
+Modify the =Replay= struct fields according to your pickle file structure.
+
+** exploration strategies
+:PROPERTIES:
+:GPTEL_MODEL: claude-3-5-haiku-20241022
+:GPTEL_BACKEND: Claude
+:GPTEL_SYSTEM: You are a large language model living in Emacs and a helpful assistant. Respond concisely.
+:GPTEL_BOUNDS: ((227 . 339))
+:END:
+
+*** hi
+
+Hello! How can I help you today? Would you like assistance with your Pokémon Red reinforcement learning project?
+
+*** yes please help it doesnt explore well
+
+Based on the code, a few potential improvements for exploration:
+
+1. Gradually decrease =exploration_rate= over time (epsilon decay)
+2. Use softmax action selection instead of epsilon-greedy
+3. Implement more sophisticated exploration strategies like:
+   - UCB (Upper Confidence Bound)
+   - Thompson Sampling
+   - Boltzmann exploration
+
+Would you like me to sketch out an implementation of one of these approaches?
+
+*** Explain those exploration strategies
+
+Here's a concise overview:
+
+1. Epsilon Decay:
+- Start with high exploration (e.g., ε = 1.0)
+- Gradually reduce ε as training progresses
+- Eventually converges to mostly exploitation
+- Simple, but can be too aggressive
+
+2. Softmax (Boltzmann) Exploration:
+- Choose actions probabilistically based on Q-values
+- Uses temperature parameter to control exploration
+- High temperature = more random
+- Low temperature = more greedy
+- Smoother transition between exploration and exploitation
+
+3. Upper Confidence Bound (UCB):
+- Balances exploration by tracking action uncertainty
+- Calculates a confidence interval for each action
+- Prioritizes actions with high potential/uncertainty
+- More mathematically principled exploration
+
+4. Thompson Sampling:
+- Maintains a probability distribution over action values
+- Samples an action based on its estimated probability of being optimal
+- Naturally balances exploration and exploitation
+- Bayesian approach, slightly more complex to implement
+
+Each has pros and cons. Softmax or UCB might work well for your game environment.
+
+*** Whatsthe difference between boltzmann and Thompson sampling
+
+Great question! Key differences:
+
+Boltzmann (Softmax):
+- Probabilistic selection based on Q-values
+- Uses a temperature parameter to control randomness
+- Directly uses current Q-value estimates
+- Simpler to implement
+- Deterministic exploration strategy
+
+Thompson Sampling:
+- Maintains full probability distribution over action values
+- Samples from a Bayesian posterior distribution
+- Accounts for uncertainty in value estimates
+- More adaptive to learning
+- Probabilistic Bayesian approach
+- Handles exploration more dynamically
+- Slightly more complex mathematically
+
+In practice:
+- Boltzmann: Good for smooth, controlled exploration
+- Thompson: Better for handling uncertainty and adapting exploration
+
+For your game, Boltzmann might be easier to start with.
+
+*** For UCB, how is action uncertainty determined?
+
+In UCB (Upper Confidence Bound), action uncertainty is determined by two key components:
+
+1. Exploitation Term:
+- Average reward for that action
+- Higher average reward = higher preference
+
+2. Exploration Term:
+- Calculated as: √(log(total_steps) / times_action_selected)
+- Increases for actions selected less frequently
+- Ensures less-explored actions get more chances
+
+UCB Formula:
+Q(a) + c * √(log(N) / N(a))
+
+Where:
+- Q(a): Average reward for action
+- N: Total number of steps
+- N(a): Number of times action was selected
+- c: Exploration parameter (typically √2)
+
+Actions with:
+- High uncertainty
+- Few selections
+- Potential for high reward
+
+Get higher selection probability.
+
+This mathematically balances exploration of unknown actions with exploitation of known good actions.
+
+*** 
