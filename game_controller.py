@@ -8,6 +8,10 @@ DEFAULT_STATE = "saves/squirt_two.save"
 
 
 class GameController:
+    MEMORY_MENU_Y = 0xCC24
+    MEMORY_MENU_X = 0xCC25
+    MEMORY_MENU_SELECTED = 0xCC26
+
     def __init__(self, rom_path, emulation_speed=1.0, headless=False):
         self.pyboy = PyBoy(rom_path, window="null" if headless else "SDL2")
         if not self.pyboy:
@@ -79,7 +83,12 @@ class GameController:
         return (self.read_m(0xD362), self.read_m(0xD361), self.read_m(0xD35E))
 
     def read_m(self, addr):
-        # return self.pyboy.get_memory_value(addr)
+        # 00:cc24 wTopMenuItemY
+        # 00:cc25 wTopMenuItemX
+        # 00:cc26 wCurrentMenuItem
+
+        if isinstance(addr, str):
+            return self.pyboy.memory[self.pyboy.symbol_lookup(addr)[1]]
         return self.pyboy.memory[addr]
 
     def get_global_coords(self):

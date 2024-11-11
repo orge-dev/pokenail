@@ -40,9 +40,9 @@ class EnvironmentState:
     prev_position: tuple
     has_oaks_parcel: bool
     has_pokedex: bool
-    menu_state: int
-    menu_cursor: int
-    selected_move: int
+    menu_y: int
+    menu_x: int
+    menu_selected: int
 
 
 class EnvRed(AbstractEnvironment):
@@ -70,15 +70,18 @@ class EnvRed(AbstractEnvironment):
         self.previous_items = dict()
         self.nearly_visited_coords = set()
 
+        # Debug vars
+        self.last_cumulative_reward = None
+
         initial_state = EnvironmentState(
             position=self.position,
             battle=self.battle,
             prev_position=None,
             has_oaks_parcel=self.has_oaks_parcel(),
             has_pokedex=self.has_pokedex(),
-            menu_state=self.controller.mem(0xD057),
-            menu_cursor=self.controller.mem(0xCC26),
-            selected_move=self.controller.mem(0xCCD5),
+            menu_y=self.controller.mem(self.controller.MEMORY_MENU_Y),
+            menu_x=self.controller.mem(self.controller.MEMORY_MENU_X),
+            menu_selected=self.controller.mem(self.controller.MEMORY_MENU_SELECTED),
         )
         self.previous_state = initial_state
         return initial_state
@@ -174,9 +177,9 @@ class EnvRed(AbstractEnvironment):
             prev_position=self.previous_state.position,
             has_oaks_parcel=self.has_oaks_parcel(),
             has_pokedex=self.has_pokedex(),
-            menu_state=self.controller.mem(0xD057),
-            menu_cursor=self.controller.mem(0xCC26),
-            selected_move=self.controller.mem(0xCCD5),
+            menu_y=self.controller.mem(self.controller.MEMORY_MENU_Y),
+            menu_x=self.controller.mem(self.controller.MEMORY_MENU_X),
+            menu_selected=self.controller.mem(self.controller.MEMORY_MENU_SELECTED),
         )
 
         # Print changed fields
@@ -193,6 +196,10 @@ class EnvRed(AbstractEnvironment):
         done = False
 
         cumulative_reward = len(self.nearly_visited_coords)
+        if manual:
+            if cumulative_reward != self.last_cumulative_reward:
+                print("cumulative reward", cumulative_reward)
+        self.last_cumulative_reward = cumulative_reward
 
         # print("seen coords", cumulative_reward)
 
