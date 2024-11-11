@@ -49,9 +49,9 @@ class AIAgent:
     def train_from_replays(
         self,
         replays_dir="replays",
-        use_cumulative_rewards=False,
+        use_cumulative_rewards=True,
         n_experiences=10000000,
-        use_combined=True,
+        use_combined=False,  # TODO: Does this work?
     ):
         """Train agent using stored replay experiences"""
 
@@ -65,7 +65,9 @@ class AIAgent:
                 all_experiences = pickle.load(f)
         else:
             print("Loading individual replay files")
-            for filename in tqdm.tqdm(list(os.listdir(replays_dir))):
+            for filename in tqdm.tqdm(
+                list(os.listdir(replays_dir))[:60]
+            ):  # TODO: Revert 60
                 if filename.endswith(".pkl"):
                     replay_buffer = ReplayBuffer()
                     replay_buffer.load(os.path.join(replays_dir, filename))
@@ -96,8 +98,12 @@ class AIAgent:
             # cumulative reward is designed to only count on the last step of the episode
             if use_cumulative_rewards:
                 if is_last_step_of_episode:
+                    # 90th percentile of random movement 10000 episodes is 1000
+                    # (makes sense? drunken walk sqrt(n)?)
+                    # exclude runs that are less than 90%, then rerun experiment with new policy, and repeat?
+                    if cumulative_reward < 1080:
+                        cumulative_reward = 0
                     reward = cumulative_reward
-                    reward = reward * reward
                 else:
                     reward = 0
             else:
