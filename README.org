@@ -1,3 +1,6 @@
+A simple Q learning implementation to learn how to play Pokémon Red.
+
+Work in progress.
 
 * Generate Training Data
 
@@ -9,7 +12,7 @@ python main.py --processes 0 --headless
 
 to run headless, with processes = num cpus, and saving replay data (see env.replay_buffer) to the replays folder.
 
-Note: training will run for the episode_length parameter, or it will stop early on encountering a battle. You can see logs of battles occuring.
+See =main.py= for other CLI arguments.
 
 
 * Train (and run) a Q model
@@ -18,7 +21,7 @@ Note: training will run for the episode_length parameter, or it will stop early 
 python main.py --train_from_replays
 #+end_src
 
-Trains from the replay of all replays in the replay folder, in order.
+Trains from the replay of all replays in the replay folder, sampled randomly. See =ai_agent.train_from_replays=.
 It will then print out the filename containing the Q table of the model.
 Finally, it will run the agent with the Q table and an exploration rate of 20%
 
@@ -42,4 +45,3 @@ python main.py --manual
 =viz_rewards.py= will visualize the rewards on each tile integrated over all replays in the replays folder
 
 =utils.py= can be used to quickly see summary stats, and can also visually debug individual episodes  with the --viz option
-
