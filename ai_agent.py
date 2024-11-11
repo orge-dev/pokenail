@@ -47,24 +47,41 @@ class AIAgent:
         self.q_table[state][action_index] = new_q
 
     def train_from_replays(
-        self, replays_dir="replays", use_cumulative_rewards=False, n_experiences=1000000
+        self,
+        replays_dir="replays",
+        use_cumulative_rewards=False,
+        n_experiences=10000000,
+        use_combined=True,
     ):
         """Train agent using stored replay experiences"""
 
+        os.makedirs("replays_combined", exist_ok=True)
+        combined_path = "replays_combined/latest_combined.pkl"
+
         all_experiences = []
-        print("Loading replay files")
-        for filename in tqdm.tqdm(list(os.listdir(replays_dir))):
-            if filename.endswith(".pkl"):
-                replay_buffer = ReplayBuffer()
-                replay_buffer.load(os.path.join(replays_dir, filename))
-                assert len(replay_buffer.buffer) > 1
-                exps = [
-                    (experience, False) for experience in replay_buffer.buffer[:-1]
-                ] + [(replay_buffer.buffer[-1], True)]
-                all_experiences.extend(exps)
+        if use_combined and os.path.exists(combined_path):
+            print(f"Loading combined experiences from {combined_path}")
+            with open(combined_path, "rb") as f:
+                all_experiences = pickle.load(f)
+        else:
+            print("Loading individual replay files")
+            for filename in tqdm.tqdm(list(os.listdir(replays_dir))):
+                if filename.endswith(".pkl"):
+                    replay_buffer = ReplayBuffer()
+                    replay_buffer.load(os.path.join(replays_dir, filename))
+                    assert len(replay_buffer.buffer) > 1
+                    exps = [
+                        (experience, False) for experience in replay_buffer.buffer[:-1]
+                    ] + [(replay_buffer.buffer[-1], True)]
+                    all_experiences.extend(exps)
+
+            # Save combined experiences
+            print("Saving combined experiences...")
+            with open(combined_path, "wb") as f:
+                pickle.dump(all_experiences, f)
+            print(f"Saved combined experiences to {combined_path}")
 
         print(f"Collected {len(all_experiences)} experiences")
-
 
         print("Training from random sampling of experiences")
         samples = random.sample(
@@ -80,6 +97,7 @@ class AIAgent:
             if use_cumulative_rewards:
                 if is_last_step_of_episode:
                     reward = cumulative_reward
+                    reward = reward * reward
                 else:
                     reward = 0
             else:

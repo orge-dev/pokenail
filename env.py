@@ -40,9 +40,12 @@ class EnvironmentState:
     prev_position: tuple
     has_oaks_parcel: bool
     has_pokedex: bool
+    menu_state: int
+    menu_cursor: int
+    selected_move: int
 
 
-class env_red(AbstractEnvironment):
+class EnvRed(AbstractEnvironment):
     def __init__(self, learning_rate=0.05, discount_factor=0.9, headless=False):
         self.controller = GameController(ROM_PATH, EMULATION_SPEED, headless=headless)
         self.q_table = defaultdict(lambda: np.zeros(len(Actions.list())))
@@ -73,6 +76,9 @@ class env_red(AbstractEnvironment):
             prev_position=None,
             has_oaks_parcel=self.has_oaks_parcel(),
             has_pokedex=self.has_pokedex(),
+            menu_state=self.controller.mem(0xD057),
+            menu_cursor=self.controller.mem(0xCC26),
+            selected_move=self.controller.mem(0xCCD5),
         )
         self.previous_state = initial_state
         return initial_state
@@ -168,15 +174,27 @@ class env_red(AbstractEnvironment):
             prev_position=self.previous_state.position,
             has_oaks_parcel=self.has_oaks_parcel(),
             has_pokedex=self.has_pokedex(),
+            menu_state=self.controller.mem(0xD057),
+            menu_cursor=self.controller.mem(0xCC26),
+            selected_move=self.controller.mem(0xCCD5),
         )
+
+        # Print changed fields
+        for field in next_state.__dataclass_fields__:
+            old_val = getattr(self.previous_state, field)
+            new_val = getattr(next_state, field)
+            if old_val != new_val:
+                print(f"{field} changed: {old_val} -> {new_val}")
 
         if not manual and agent is not None:
             agent.update_q_table(self.previous_state, action, next_state, step_reward)
 
-        done = self.battle and not manual  # dont end on battle if manual
+        # done = self.battle and not manual  # dont end on battle if manual
+        done = False
 
-        #step_reward = 0  # TODO: Remove
         cumulative_reward = len(self.nearly_visited_coords)
+
+        # print("seen coords", cumulative_reward)
 
         experience = {
             "state": self.previous_state,
