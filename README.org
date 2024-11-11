@@ -1,4 +1,4 @@
-A simple Q learning implementation to learn how to play Pokémon Red.
+A simple Q learning implementation learning how to play Pokémon Red.
 
 Work in progress.
 
