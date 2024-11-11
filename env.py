@@ -186,8 +186,8 @@ class EnvRed(AbstractEnvironment):
         for field in next_state.__dataclass_fields__:
             old_val = getattr(self.previous_state, field)
             new_val = getattr(next_state, field)
-            if old_val != new_val:
-                print(f"{field} changed: {old_val} -> {new_val}")
+            # if old_val != new_val:
+            #     print(f"{field} changed: {old_val} -> {new_val}")
 
         if not manual and agent is not None:
             agent.update_q_table(self.previous_state, action, next_state, step_reward)
