@@ -1,10 +1,12 @@
-
-** TODO Fix cumulative reward training for exploration
+* TODO https://docs.pola.rs/user-guide/io/parquet/
+* TODO Fix cumulative reward training for exploration
 :LOGBOOK:
-CLOCK: [2024-11-10 Sun 19:06]--[2024-11-10 Sun 19:37] =>  0:31
 :END:
 
-*** TODO Rescale cumulative rewards retroactively
+** TODO Rescale cumulative rewards retroactively
+:LOGBOOK:
+CLOCK: [2024-11-11 Mon 09:42]--[2024-11-11 Mon 09:42] =>  0:00
+:END:
 
 I.e., now we have:
 
@@ -30,21 +32,20 @@ Including trying to go to elite 4, not including all buildings
 
 cumulative reward 3337 after visiting like whole map without pokedex
 
-**** 60 file replay with < 1080 cumulative rewards clamped to 0:
+*** 60 file replay with < 1080 cumulative rewards clamped to 0:
 
 checkpoints/from_replays/agent_state_20241110_192541_XDcLS5HZ.pkl
 
 Performance seems ok? 
 
-**** 1000 file replay, same rewards as above
+*** 1000 file replay, same rewards as above
 checkpoints/from_replays/agent_state_20241110_192800_dOzEJYF6.pkl
 
 Struggles in battles, need to fix menu state probably
 
+* TODO Use policy with non-1.0 exploration during training
 
-** TODO Use policy with non-1.0 exploration during training
-
-** TODO Go through pokemonred_puffer read_m calls, note important addrs
+* TODO Go through pokemonred_puffer read_m calls, note important addrs
 like 
 #+begin_src python
 if self.read_m("wCurrentMenuItem") == 2:
@@ -52,28 +53,38 @@ if self.read_m("wCurrentMenuItem") == 2:
 
 Note: lookup of this symbol fails, but we can read from the hex addr
 
-** TODO Integrate streamwrapper
+* TODO Integrate streamwrapper
 
-** TODO Fix battle state
+* TODO Fix battle state
 :LOGBOOK:
-CLOCK: [2024-11-10 Sun 19:37]--[2024-11-10 Sun 19:53] =>  0:16
+CLOCK: [2024-11-11 Mon 09:22]--[2024-11-11 Mon 09:33] =>  0:11
 :END:
-** TODO Eval models performance (in terms of cumulative reward) after training / on-demand
 
-** TODO  better sampling
+Regenerated training data with new menu state. Now to train! And generate more data with non-1.0
+
+checkpoints/from_replays/agent_state_20241111_142424_9v2z4GfV.pkl
+
+* TODO Eval models performance (in terms of cumulative reward) after training / on-demand
+:LOGBOOK:
+CLOCK: [2024-11-11 Mon 09:33]--[2024-11-11 Mon 09:33] =>  0:00
+:END:
+
+* TODO  better sampling
 
 
-** TODO Set up training loop where we get top 10% performance on cumulative_reward, train with other runs clamped, then generate new training data with the model at exploration rate = ??
-** TODO Hindsight experience replay?
-** TODO "Swarming" ie good savepoints to explore from instead of starting tile
+* TODO Set up training loop where we get top 10% performance on cumulative_reward, train with other runs clamped, then generate new training data with the model at exploration rate = ??
+* TODO Hindsight experience replay?
+* TODO "Swarming" ie good savepoints to explore from instead of starting tile
 
 Probably should do checkpoints when training and compare performance. Don't want to overtrain right 🤔?
+
 * Ideas
 
 ** Rewrite it in Rust
 
 Not just a joke, it could actually make training a lot faster, without needing a GPU. (Assuming we stick with Q learning for a while. May also make some things faster even after going GPU though)
 
+Using Polars with Parquet may be a reasonable middleground?
 
 * gipity archives
 :PROPERTIES:

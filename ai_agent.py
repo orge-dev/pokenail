@@ -66,7 +66,7 @@ class AIAgent:
         else:
             print("Loading individual replay files")
             for filename in tqdm.tqdm(
-                list(os.listdir(replays_dir))[:60]
+                list(os.listdir(replays_dir))[:1000]
             ):  # TODO: Revert 60
                 if filename.endswith(".pkl"):
                     replay_buffer = ReplayBuffer()
