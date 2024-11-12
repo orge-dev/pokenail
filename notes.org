@@ -71,7 +71,7 @@ CLOCK: [2024-11-11 Mon 09:33]--[2024-11-11 Mon 09:33] =>  0:00
 
 * TODO  better sampling
 
-
+* TODO Find optimal hold_ticks and release_ticks
 * TODO Set up training loop where we get top 10% performance on cumulative_reward, train with other runs clamped, then generate new training data with the model at exploration rate = ??
 * TODO Hindsight experience replay?
 * TODO "Swarming" ie good savepoints to explore from instead of starting tile
