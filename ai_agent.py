@@ -89,6 +89,7 @@ class AIAgent:
         samples = random.sample(
             all_experiences, min(n_experiences, len(all_experiences))
         )
+        total_samples = len(samples)
 
         checkpoint_dir = "checkpoints/training_progress"
         os.makedirs(checkpoint_dir, exist_ok=True)
@@ -97,7 +98,9 @@ class AIAgent:
         checkpoint_path = f"{checkpoint_dir}/checkpoint_0_percent.pkl"
         self.save_state(checkpoint_path, do_print=True)
 
-        for sample_i, (experience, is_last_step_of_episode) in enumerate(tqdm.tqdm(samples)):
+        for sample_i, (experience, is_last_step_of_episode) in enumerate(
+            tqdm.tqdm(samples)
+        ):
             state = experience["state"]
             action = experience["action"]
             next_state = experience["next_state"]
@@ -120,65 +123,12 @@ class AIAgent:
             # Save checkpoint every 10%
             progress = (sample_i + 1) / total_samples
             if progress * 100 % 10 == 0:  # At 10%, 20%, etc
-                checkpoint_path = f"{checkpoint_dir}/checkpoint_{int(progress*100)}_percent.pkl"
+                checkpoint_path = (
+                    f"{checkpoint_dir}/checkpoint_{int(progress*100)}_percent.pkl"
+                )
                 self.save_state(checkpoint_path, do_print=True)
 
             self.update_q_table(state, action, next_state, reward)
-
-    def evaluate_training_progress(checkpoint_dir="checkpoints/training_progress"):
-        """Run agents from all checkpoints simultaneously in a grid."""
-        import math
-        from env import EnvRed
-
-        # Get all checkpoint files
-        checkpoints = sorted([f for f in os.listdir(checkpoint_dir) if f.endswith('.pkl')])
-        n_agents = len(checkpoints)
-
-        # Calculate grid dimensions 
-        grid_size = math.ceil(math.sqrt(n_agents))
-        window_width = 160  # GB screen width
-        window_height = 144  # GB screen height
-
-        # Initialize agents and environments
-        agents = []
-        envs = []
-
-        print(f"Setting up {n_agents} agents in {grid_size}x{grid_size} grid...")
-
-        for i, checkpoint in enumerate(checkpoints):
-            # Calculate window position
-            row = i // grid_size
-            col = i % grid_size
-            x_pos = col * window_width
-            y_pos = row * window_height
-
-            # Create environment with specified window position
-            env = EnvRed(headless=False)
-            env.controller.pyboy._window.set_position(x_pos, y_pos)
-
-            # Create and load agent
-            agent = AIAgent(exploration_rate=0.2)  # Low exploration to see learned behavior
-            agent.load_state(os.path.join(checkpoint_dir, checkpoint))
-
-            agents.append(agent)
-            envs.append(env)
-
-            print(f"Loaded checkpoint {checkpoint}")
-
-        try:
-            print("\nRunning episodes...")
-            # Run all agents for same number of steps
-            episode_length = 2000
-            for step in tqdm.tqdm(range(episode_length)):
-                for env, agent in zip(envs, agents):
-                    state = env.previous_state
-                    action = agent.select_action(state)
-                    env.step(action)
-
-        finally:
-            print("Cleaning up...")
-            for env in envs:
-                env.close()
 
     def save_state(self, filename="agent_state.pkl", do_print=False):
         """Saves the Q-table."""
@@ -193,3 +143,64 @@ class AIAgent:
             self.q_table = defaultdict(
                 lambda: np.zeros(len(Actions.list())), pickle.load(file)
             )
+
+
+def evaluate_training_progress(checkpoint_dir="checkpoints/training_progress"):
+    """Run agents from all checkpoints simultaneously in a grid."""
+    import math
+    from env import EnvRed
+
+    # Get all checkpoint files
+    checkpoints = sorted([f for f in os.listdir(checkpoint_dir) if f.endswith(".pkl")])
+    n_agents = len(checkpoints)
+
+    # Calculate grid dimensions
+    grid_size = math.ceil(math.sqrt(n_agents))
+    window_width = 160  # GB screen width
+    window_height = 144  # GB screen height
+
+    # Initialize agents and environments
+    agents = []
+    envs = []
+
+    print(f"Setting up {n_agents} agents in {grid_size}x{grid_size} grid...")
+
+    for i, checkpoint in enumerate(checkpoints):
+        # Calculate window position
+        row = i // grid_size
+        col = i % grid_size
+        x_pos = col * window_width
+        y_pos = row * window_height
+
+        # Create environment with specified window position
+        env = EnvRed(headless=False)
+        if hasattr(env.controller.pyboy, "window_position"):
+            env.controller.pyboy.window_position = (x_pos, y_pos)
+        elif hasattr(env.controller.pyboy, "set_window_position"):
+            env.controller.pyboy.set_window_position(x_pos, y_pos)
+        else:
+            print("Warning: Could not set window position")
+
+        # Create and load agent
+        agent = AIAgent(exploration_rate=0.2)  # Low exploration to see learned behavior
+        agent.load_state(os.path.join(checkpoint_dir, checkpoint))
+
+        agents.append(agent)
+        envs.append(env)
+
+        print(f"Loaded checkpoint {checkpoint}")
+
+    try:
+        print("\nRunning episodes...")
+        # Run all agents for same number of steps
+        episode_length = 2000
+        for step in tqdm.tqdm(range(episode_length)):
+            for env, agent in zip(envs, agents):
+                state = env.previous_state
+                action = agent.select_action(state)
+                env.step(action)
+
+    finally:
+        print("Cleaning up...")
+        for env in envs:
+            env.close()

@@ -1,4 +1,4 @@
-from ai_agent import AIAgent
+from ai_agent import AIAgent, evaluate_training_progress
 from env import EnvRed
 from utils import generate_timestamped_id
 import argparse
@@ -172,10 +172,12 @@ def main():
 
     if args.train_from_replays:
         agent = AIAgent()
-        if initial_q_state:  
+        if initial_q_state:
             agent.load_state(initial_q_state)
         agent.train_from_replays()
-        q_state_filename = f"checkpoints/from_replays/agent_state_{generate_timestamped_id()}.pkl"
+        q_state_filename = (
+            f"checkpoints/from_replays/agent_state_{generate_timestamped_id()}.pkl"
+        )
         agent.save_state(q_state_filename, do_print=True)
 
         print("\nEvaluating final agent...")
