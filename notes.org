@@ -1,7 +1,5 @@
 * TODO https://docs.pola.rs/user-guide/io/parquet/
 * TODO Fix cumulative reward training for exploration
-:LOGBOOK:
-:END:
 
 ** TODO Rescale cumulative rewards retroactively
 :LOGBOOK:

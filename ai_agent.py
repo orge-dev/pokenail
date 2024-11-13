@@ -48,15 +48,19 @@ class AIAgent:
 
     def train_from_replays(
         self,
+        agent_id=None,
         replays_dir="replays",
-        use_cumulative_rewards=True,
+        use_cumulative_rewards=False,  # TODO: Does this work?
         n_experiences=10000000,
         use_combined=False,  # TODO: Does this work?
+        good_cumulative_boosts_breadcumbs=True,  # WIP
     ):
-        """Train agent using stored replay experiences"""
+        """Train agent using stored replay expeiences"""
 
         os.makedirs("replays_combined", exist_ok=True)
         combined_path = "replays_combined/latest_combined.pkl"
+
+        cumulative_rewards = []
 
         all_experiences = []
         if use_combined and os.path.exists(combined_path):
@@ -72,35 +76,43 @@ class AIAgent:
                     replay_buffer = ReplayBuffer()
                     replay_buffer.load(os.path.join(replays_dir, filename))
                     assert len(replay_buffer.buffer) > 1
+                    last_experience = replay_buffer.buffer[-1]
+                    cumulative_reward = last_experience["cumulative_reward"]
+                    cumulative_rewards.append(cumulative_reward)
                     exps = [
-                        (experience, False) for experience in replay_buffer.buffer[:-1]
-                    ] + [(replay_buffer.buffer[-1], True)]
+                        (experience, False, cumulative_reward)
+                        for experience in replay_buffer.buffer[:-1]
+                    ] + [(replay_buffer.buffer[-1], True, cumulative_reward)]
                     all_experiences.extend(exps)
 
             # Save combined experiences
-            print("Saving combined experiences...")
-            with open(combined_path, "wb") as f:
-                pickle.dump(all_experiences, f)
-            print(f"Saved combined experiences to {combined_path}")
+            # print("Saving combined experiences...")
+            # with open(combined_path, "wb") as f:
+            #     pickle.dump(all_experiences, f)
+            # print(f"Saved combined experiences to {combined_path}")
 
         print(f"Collected {len(all_experiences)} experiences")
-
         print("Training from random sampling of experiences")
         samples = random.sample(
             all_experiences, min(n_experiences, len(all_experiences))
         )
         total_samples = len(samples)
 
-        checkpoint_dir = "checkpoints/training_progress"
-        os.makedirs(checkpoint_dir, exist_ok=True)
+        if agent_id is not None:
+            checkpoint_dir = f"checkpoints_partial/{agent_id}"
+            os.makedirs(checkpoint_dir, exist_ok=True)
 
         # Save initial state
         checkpoint_path = f"{checkpoint_dir}/checkpoint_0_percent.pkl"
         self.save_state(checkpoint_path, do_print=True)
 
-        for sample_i, (experience, is_last_step_of_episode) in enumerate(
-            tqdm.tqdm(samples)
-        ):
+        cumulative_reward_90p = np.percentile(cumulative_rewards, 90)
+
+        for sample_i, (
+            experience,
+            is_last_step_of_episode,
+            episode_cumulative_reward,
+        ) in enumerate(tqdm.tqdm(samples)):
             state = experience["state"]
             action = experience["action"]
             next_state = experience["next_state"]
@@ -120,13 +132,21 @@ class AIAgent:
             else:
                 reward = step_reward
 
-            # Save checkpoint every 10%
-            progress = (sample_i + 1) / total_samples
-            if progress * 100 % 10 == 0:  # At 10%, 20%, etc
-                checkpoint_path = (
-                    f"{checkpoint_dir}/checkpoint_{int(progress*100)}_percent.pkl"
-                )
-                self.save_state(checkpoint_path, do_print=True)
+                if (
+                    good_cumulative_boosts_breadcumbs
+                    and episode_cumulative_reward >= cumulative_reward_90p
+                    and reward > 0
+                ):
+                    reward = reward * 20
+
+            if agent_id is not None:
+                # Save checkpoint every 10%
+                progress = (sample_i + 1) / total_samples
+                if progress * 100 % 10 == 0:  # At 10%, 20%, etc
+                    checkpoint_path = (
+                        f"{checkpoint_dir}/checkpoint_{int(progress*100)}_percent.pkl"
+                    )
+                    self.save_state(checkpoint_path, do_print=True)
 
             self.update_q_table(state, action, next_state, reward)
 

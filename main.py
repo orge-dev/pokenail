@@ -41,6 +41,12 @@ def parse_arguments():
         help="Path to initial Q-state file to load",
         default=None,
     )
+    parser.add_argument(
+        "--eval",
+        type=str,
+        help="Path to directory with agent states to evaluate",
+        default=None,
+    )
     return parser.parse_args()
 
 
@@ -174,10 +180,9 @@ def main():
         agent = AIAgent()
         if initial_q_state:
             agent.load_state(initial_q_state)
-        agent.train_from_replays()
-        q_state_filename = (
-            f"checkpoints/from_replays/agent_state_{generate_timestamped_id()}.pkl"
-        )
+        agent_id = generate_timestamped_id()
+        agent.train_from_replays(agent_id)
+        q_state_filename = f"checkpoints/from_replays/agent_state_{agent_id}.pkl"
         agent.save_state(q_state_filename, do_print=True)
 
         print("\nEvaluating final agent...")
@@ -188,6 +193,9 @@ def main():
 
         print("\nEvaluating training progress...")
         evaluate_training_progress()
+
+    elif args.eval:
+        evaluate_training_progress(args.eval)
 
     elif args.manual:
         run_manual_mode()

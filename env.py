@@ -108,6 +108,7 @@ class EnvRed(AbstractEnvironment):
         return distance, distance_reward
 
     def calculate_reward(self, position):
+        return len(self.nearly_visited_coords) - self.previous_nearly_visited_coords
         position_tuple = tuple(position)
 
         # Distance-based reward
@@ -150,6 +151,7 @@ class EnvRed(AbstractEnvironment):
         self.position = self.controller.get_global_coords()
         self.visited_coords.add(tuple(self.position))  # Add this line
 
+        self.previous_nearly_visited_coords = len(self.nearly_visited_coords)
         # Add 5x5 area around current position to nearly_visited_coords
         for dy in range(-2, 3):  # -2 to 2 for 5x5 area
             for dx in range(-2, 3):
