@@ -18,7 +18,7 @@ def parse_arguments():
         "--episodes", type=int, default=100, help="Number of episodes to run"
     )
     parser.add_argument(
-        "--episode_length", type=int, default=5000, help="Steps per episode"
+        "--episode_length", type=int, default=10000, help="Steps per episode"
     )
     parser.add_argument(
         "--train_from_replays",
@@ -32,9 +32,9 @@ def parse_arguments():
         help="Number of parallel processes (default: CPU count)",
     )
     parser.add_argument(
-        "--initial_q_state",
+        "--agent",
         type=str,
-        help="Path to initial Q-state file to load",
+        help="Path to initial agent state (Q table) file to load",
         default=None,
     )
     parser.add_argument(
@@ -109,7 +109,7 @@ def run_manual_mode():
 
 
 def run_episode(args, environment=None, exploration_rate=1.0):
-    episode_num, episode_length, headless, initial_q_state = args
+    episode_num, episode_length, headless, agent = args
     if environment is None:
         should_close_environment = True
         environment = EnvRed(headless=headless)
@@ -122,8 +122,8 @@ def run_episode(args, environment=None, exploration_rate=1.0):
         episode_id = f"{generate_timestamped_id()}_ep{episode_num}"
         ai_agent = AIAgent(exploration_rate=exploration_rate)
 
-        if initial_q_state and os.path.exists(initial_q_state):
-            ai_agent.load_state(initial_q_state)
+        if agent and os.path.exists(agent):
+            ai_agent.load_state(agent)
 
         state = environment.reset()
         step = 0
@@ -167,15 +167,15 @@ def run_episode(args, environment=None, exploration_rate=1.0):
 def main():
     args = parse_arguments()
 
-    initial_q_state = args.initial_q_state
+    agent_file = args.agent
 
     # Setup folders where we save stuff
     os.makedirs("checkpoints/from_replays", exist_ok=True)
 
     if args.train_from_replays:
         agent = AIAgent()
-        if initial_q_state:
-            agent.load_state(initial_q_state)
+        if agent_file:
+            agent.load_state(agent_file)
         agent_id = generate_timestamped_id()
         agent.train_from_replays(agent_id)
         q_state_filename = f"checkpoints/from_replays/agent_state_{agent_id}.pkl"
@@ -205,7 +205,7 @@ def main():
             try:
                 for i in range(args.episodes):
                     episode_id = run_episode(
-                        (i + 1, args.episode_length, args.headless, initial_q_state),
+                        (i + 1, args.episode_length, args.headless, agent),
                         environment=environment,
                         exploration_rate=0.2,  # use q table when not headless, so we see AI actions
                     )
@@ -218,7 +218,7 @@ def main():
             print(f"Running {args.episodes} episodes using {num_processes} processes")
 
             episode_args = [
-                (i + 1, args.episode_length, args.headless, initial_q_state)
+                (i + 1, args.episode_length, args.headless, agent)
                 for i in range(args.episodes)
             ]
 
