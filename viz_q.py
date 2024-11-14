@@ -1,7 +1,9 @@
 import pickle
+from collections import defaultdict
+
 import matplotlib.pyplot as plt
 import numpy as np
-from collections import defaultdict
+
 from actions import Actions
 
 

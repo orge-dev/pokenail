@@ -1,11 +1,13 @@
-import numpy as np
+import os
 import pickle
+import random
 from collections import defaultdict
+
+import numpy as np
+import tqdm
+
 from actions import Actions
 from replay_buffer import ReplayBuffer
-import random
-import os
-import tqdm
 
 
 class AIAgent:
@@ -106,22 +108,20 @@ class AIAgent:
         checkpoint_path = f"{checkpoint_dir}/checkpoint_0_percent.pkl"
         self.save_state(checkpoint_path, do_print=True)
 
-        cumulative_reward_90p = np.percentile(cumulative_rewards, 90)
-
         def get_reward_scaling(episode_reward, reward_thresholds):
-            if episode_reward >= reward_thresholds['95p']:
+            if episode_reward >= reward_thresholds["95p"]:
                 return 200
-            elif episode_reward >= reward_thresholds['90p']:
+            elif episode_reward >= reward_thresholds["90p"]:
                 return 100
-            elif episode_reward >= reward_thresholds['75p']:
+            elif episode_reward >= reward_thresholds["75p"]:
                 return 50
             else:
                 return 1
 
         reward_thresholds = {
-            '95p': np.percentile(cumulative_rewards, 95),
-            '90p': np.percentile(cumulative_rewards, 90),
-            '75p': np.percentile(cumulative_rewards, 75)
+            "95p": np.percentile(cumulative_rewards, 95),
+            "90p": np.percentile(cumulative_rewards, 90),
+            "75p": np.percentile(cumulative_rewards, 75),
         }
 
         for sample_i, (
@@ -148,9 +148,10 @@ class AIAgent:
             else:
                 reward = step_reward
 
-
                 if use_cumulative_reward_scaling:
-                    scaling = get_reward_scaling(episode_cumulative_reward, reward_thresholds)
+                    scaling = get_reward_scaling(
+                        episode_cumulative_reward, reward_thresholds
+                    )
                     reward = reward * scaling
 
             if agent_id is not None:
@@ -182,6 +183,7 @@ class AIAgent:
 def evaluate_training_progress(checkpoint_dir="checkpoints/training_progress"):
     """Run agents from all checkpoints simultaneously in a grid."""
     import math
+
     from env import EnvRed
 
     # Get all checkpoint files

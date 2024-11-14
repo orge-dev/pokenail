@@ -1,6 +1,8 @@
 import unittest
-import numpy as np
 from collections import defaultdict
+
+import numpy as np
+
 from actions import Actions
 
 

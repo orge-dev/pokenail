@@ -1,9 +1,9 @@
 import datetime
+import os
+import pickle
 import random
 import string
 import time
-import os
-import pickle
 
 from viz import visualize_heatmap, visualize_path
 

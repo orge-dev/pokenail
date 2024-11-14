@@ -1,9 +1,10 @@
-from ai_agent import AIAgent, evaluate_training_progress
-from env import EnvRed
-from utils import generate_timestamped_id
 import argparse
 import os
 from multiprocessing import Pool, cpu_count
+
+from ai_agent import AIAgent, evaluate_training_progress
+from env import EnvRed
+from utils import generate_timestamped_id
 
 
 def parse_arguments():
@@ -217,7 +218,6 @@ def main():
             num_processes = args.processes or cpu_count()
             print(f"Running {args.episodes} episodes using {num_processes} processes")
 
-            
             episode_args = [
                 (i + 1, args.episode_length, args.headless, agent_file)
                 for i in range(args.episodes)

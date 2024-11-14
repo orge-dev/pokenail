@@ -1,5 +1,5 @@
-import os
 import json
+import os
 
 MAP_PATH = os.path.join(os.path.dirname(__file__), "map_data.json")
 PAD = 20
