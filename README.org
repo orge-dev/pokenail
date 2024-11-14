@@ -2,6 +2,13 @@ A simple Q learning implementation learning how to play Pokémon Red.
 
 Work in progress.
 
+* Setup Environment
+
+#+begin_src 
+pip install . && pip install '.[dev]'
+#+end_src
+
+
 * Generate Training Data
 
 Run
