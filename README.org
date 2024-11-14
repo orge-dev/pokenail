@@ -37,7 +37,7 @@ Finally, it will run the agent with the Q table and an exploration rate of 20%
 Running train_from_replays will generate a pkl file for the resulting Q state. Load that file to have the AI agent play:
 
 #+begin_src 
-python main.py --initial_q_state <q_state_file>
+python main.py --agent <agent_state_file>
 #+end_src
 
 ** Manual mode
