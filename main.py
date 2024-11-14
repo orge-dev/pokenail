@@ -109,7 +109,7 @@ def run_manual_mode():
 
 
 def run_episode(args, environment=None, exploration_rate=1.0):
-    episode_num, episode_length, headless, agent = args
+    episode_num, episode_length, headless, agent_file = args
     if environment is None:
         should_close_environment = True
         environment = EnvRed(headless=headless)
@@ -122,8 +122,8 @@ def run_episode(args, environment=None, exploration_rate=1.0):
         episode_id = f"{generate_timestamped_id()}_ep{episode_num}"
         ai_agent = AIAgent(exploration_rate=exploration_rate)
 
-        if agent and os.path.exists(agent):
-            ai_agent.load_state(agent)
+        if agent_file and os.path.exists(agent_file):
+            ai_agent.load_state(agent_file)
 
         state = environment.reset()
         step = 0
@@ -205,7 +205,7 @@ def main():
             try:
                 for i in range(args.episodes):
                     episode_id = run_episode(
-                        (i + 1, args.episode_length, args.headless, agent),
+                        (i + 1, args.episode_length, args.headless, agent_file),
                         environment=environment,
                         exploration_rate=0.2,  # use q table when not headless, so we see AI actions
                     )
@@ -217,8 +217,9 @@ def main():
             num_processes = args.processes or cpu_count()
             print(f"Running {args.episodes} episodes using {num_processes} processes")
 
+            
             episode_args = [
-                (i + 1, args.episode_length, args.headless, agent)
+                (i + 1, args.episode_length, args.headless, agent_file)
                 for i in range(args.episodes)
             ]
 
