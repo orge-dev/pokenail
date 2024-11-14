@@ -53,7 +53,7 @@ class AIAgent:
         use_cumulative_rewards=False,  # TODO: Does this work?
         n_experiences=10000000,
         use_combined=False,  # TODO: Does this work?
-        good_cumulative_boosts_breadcumbs=True,  # WIP
+        use_cumulative_reward_scaling=True,  # WIP
     ):
         """Train agent using stored replay expeiences"""
 
@@ -108,6 +108,22 @@ class AIAgent:
 
         cumulative_reward_90p = np.percentile(cumulative_rewards, 90)
 
+        def get_reward_scaling(episode_reward, reward_thresholds):
+            if episode_reward >= reward_thresholds['95p']:
+                return 200
+            elif episode_reward >= reward_thresholds['90p']:
+                return 100
+            elif episode_reward >= reward_thresholds['75p']:
+                return 50
+            else:
+                return 1
+
+        reward_thresholds = {
+            '95p': np.percentile(cumulative_rewards, 95),
+            '90p': np.percentile(cumulative_rewards, 90),
+            '75p': np.percentile(cumulative_rewards, 75)
+        }
+
         for sample_i, (
             experience,
             is_last_step_of_episode,
@@ -132,12 +148,10 @@ class AIAgent:
             else:
                 reward = step_reward
 
-                if (
-                    good_cumulative_boosts_breadcumbs
-                    and episode_cumulative_reward >= cumulative_reward_90p
-                    and reward > 0
-                ):
-                    reward = reward * 20
+
+                if use_cumulative_reward_scaling:
+                    scaling = get_reward_scaling(episode_cumulative_reward, reward_thresholds)
+                    reward = reward * scaling
 
             if agent_id is not None:
                 # Save checkpoint every 10%
