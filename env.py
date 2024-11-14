@@ -1,6 +1,5 @@
 import os
 import pickle
-from abc import ABC, abstractmethod
 from collections import defaultdict
 from dataclasses import dataclass
 
@@ -11,27 +10,7 @@ from actions import (
 )  # Replace `actions` with the actual module name if different
 from config import EMULATION_SPEED, ROM_PATH
 from game_controller import GameController
-from global_map import local_to_global
 from replay_buffer import ReplayBuffer
-
-
-class AbstractEnvironment(ABC):
-    @abstractmethod
-    def reset(self):
-        """Reset the environment and return the initial state."""
-        pass
-
-    @abstractmethod
-    def step(self, action):
-        """Take an action in the environment and return the next state, reward, done, and additional info."""
-        pass
-
-    def get_game_coords(self):
-        return (self.read_m(0xD362), self.read_m(0xD361), self.read_m(0xD35E))
-
-    def get_global_coords(self):
-        x_pos, y_pos, map_n = self.get_game_coords()
-        return local_to_global(y_pos, x_pos, map_n)
 
 
 # This is the information we save to replays and train from
@@ -39,7 +18,7 @@ class AbstractEnvironment(ABC):
 class EnvironmentState:
     position: tuple
     battle: bool
-    prev_position: tuple
+    prev_position: tuple | None
     has_oaks_parcel: bool
     has_pokedex: bool
     menu_y: int
@@ -47,7 +26,7 @@ class EnvironmentState:
     menu_selected: int
 
 
-class EnvRed(AbstractEnvironment):
+class EnvRed:
     def __init__(self, learning_rate=0.05, discount_factor=0.9, headless=False):
         self.controller = GameController(ROM_PATH, EMULATION_SPEED, headless=headless)
         self.q_table = defaultdict(lambda: np.zeros(len(Actions.list())))
@@ -68,6 +47,7 @@ class EnvRed(AbstractEnvironment):
         self.total_reward = 0
         self.steps_to_battle = None
         self.last_distance_reward = None
+        self.prev_position = None
         self.position = self.controller.get_global_coords()
         self.previous_items = dict()
         self.nearly_visited_coords = set()
@@ -75,18 +55,19 @@ class EnvRed(AbstractEnvironment):
         # Debug vars
         self.last_cumulative_reward = None
 
-        initial_state = EnvironmentState(
+        self.previous_state = self.state()
+
+    def state(self):
+        return EnvironmentState(
             position=self.position,
             battle=self.battle,
-            prev_position=None,
+            prev_position=self.prev_position,
             has_oaks_parcel=self.has_oaks_parcel(),
             has_pokedex=self.has_pokedex(),
             menu_y=self.controller.mem(self.controller.MEMORY_MENU_Y),
             menu_x=self.controller.mem(self.controller.MEMORY_MENU_X),
             menu_selected=self.controller.mem(self.controller.MEMORY_MENU_SELECTED),
         )
-        self.previous_state = initial_state
-        return initial_state
 
     def has_oaks_parcel(self):
         return "Oak's Parcel" in self.controller.get_items()
@@ -97,7 +78,7 @@ class EnvRed(AbstractEnvironment):
         pokedex_sprite_bit = pokedex_sprite_byte >> 7
         return bool(pokedex_sprite_bit)
 
-    def calculate_distance_metrics(self, position):
+    def calculate_distance_reward(self, position):
         target_position = (309, 99)
         distance = np.sqrt(
             (position[0] - target_position[0]) ** 2
@@ -107,16 +88,13 @@ class EnvRed(AbstractEnvironment):
             distance_reward = 0.0
         else:
             distance_reward = 1000.0 / (distance + 1)
-        return distance, distance_reward
+        return distance_reward
 
     def calculate_reward(self, position):
-        return len(self.nearly_visited_coords) - self.previous_nearly_visited_coords
         position_tuple = tuple(position)
 
         # Distance-based reward
-        current_distance, distance_reward = self.calculate_distance_metrics(
-            position_tuple
-        )
+        distance_reward = self.calculate_distance_reward(position_tuple)
 
         # Print first distance reward or significant changes
         if self.last_distance_reward is None:
@@ -131,17 +109,19 @@ class EnvRed(AbstractEnvironment):
                 self.last_distance_reward = distance_reward
 
         # Battle reward (scaled by steps)
-        if not self.battle_reward_applied and self.battle:
-            battle_reward = 100000 * (1 / self.current_step)
-            self.battle_reward_applied = True
-            print(f"\nBattle found! Position: {position}, Battle: {self.battle}")
-            print(f"Battle reward: {battle_reward}")
-            # NOTE: only battle reward is active right now
-            # Others are still calculated above but not used.
-            # And done = self.battle below, so the episode ends on finding a battle
-            return battle_reward
+        # if not self.battle_reward_applied and self.battle:
+        #     battle_reward = 100000 * (1 / self.current_step)
+        #     self.battle_reward_applied = True
+        #     print(f"\nBattle found! Position: {position}, Battle: {self.battle}")
+        #     print(f"Battle reward: {battle_reward}")
+        #     # NOTE: only battle reward is active right now
+        #     # Others are still calculated above but not used.
+        #     # And done = self.battle below, so the episode ends on finding a battle
+        #     return battle_reward
 
-        return 0  # No reward for non-battle steps
+        # return 0  # no reward for non-battle steps
+
+        return len(self.nearly_visited_coords) - self.previous_nearly_visited_coords
 
     def step(self, action=None, manual=False, agent=None):
         self.current_step += 1

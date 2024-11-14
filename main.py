@@ -70,7 +70,7 @@ def run_ai_mode(
             ai_agent.save_state(f"checkpoints/agent_state_{episode_id}.pkl")
 
         action = ai_agent.select_action(state)
-        next_state, reward, done, _ = environment.step(action, False)
+        next_state, _, done, _ = environment.step(action, False)
 
         # debug logs
         if (
@@ -104,7 +104,7 @@ def run_manual_mode():
     step = 0
     while not done:
         step += 1
-        next_state, reward, cumulative_reward, done, _ = environment.step(manual=True)
+        environment.step(manual=True)
         if step % 50 == 0:
             environment.controller.save_state()
 
@@ -126,7 +126,8 @@ def run_episode(args, environment=None, exploration_rate=1.0):
         if agent_file and os.path.exists(agent_file):
             ai_agent.load_state(agent_file)
 
-        state = environment.reset()
+        environment.reset()
+        state = environment.state()
         step = 0
         final_cumulative_reward = None
         while step < episode_length:
@@ -135,16 +136,11 @@ def run_episode(args, environment=None, exploration_rate=1.0):
                 ai_agent.save_state(f"checkpoints/agent_state_{episode_id}.pkl")
 
             action = ai_agent.select_action(state)
-            next_state, reward, cumulative_reward, done, _ = environment.step(
-                action, False
-            )
+            next_state, _, cumulative_reward, done, _ = environment.step(action, False)
             final_cumulative_reward = cumulative_reward  # Update the final value
 
             if step % 1000 == 0 or step == episode_length:
                 current_pos = next_state.position
-                distance, distance_reward = environment.calculate_distance_metrics(
-                    current_pos
-                )
                 print(f"\nEpisode {episode_num} step {step}/{episode_length}:")
                 print(f"Total reward: {environment.total_reward:.2f}")
                 print(f"Current position: {current_pos}")

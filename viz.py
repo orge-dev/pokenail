@@ -80,7 +80,7 @@ def visualize_heatmap(stats, save_path=None):
         heatmap,
         cmap="hot",
         origin="lower",
-        extent=[xedges[0], xedges[-1], yedges[0], yedges[-1]],
+        extent=[xedges[0], xedges[-1], yedges[0], yedges[-1]],  # type: ignore
     )
 
     # Add colorbar

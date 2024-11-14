@@ -100,13 +100,14 @@ class AIAgent:
         )
         total_samples = len(samples)
 
+        checkpoint_dir = None
         if agent_id is not None:
             checkpoint_dir = f"checkpoints_partial/{agent_id}"
             os.makedirs(checkpoint_dir, exist_ok=True)
 
-        # Save initial state
-        checkpoint_path = f"{checkpoint_dir}/checkpoint_0_percent.pkl"
-        self.save_state(checkpoint_path, do_print=True)
+            # Save initial state
+            checkpoint_path = f"{checkpoint_dir}/checkpoint_0_percent.pkl"
+            self.save_state(checkpoint_path, do_print=True)
 
         def get_reward_scaling(episode_reward, reward_thresholds):
             if episode_reward >= reward_thresholds["95p"]:
@@ -154,7 +155,7 @@ class AIAgent:
                     )
                     reward = reward * scaling
 
-            if agent_id is not None:
+            if checkpoint_dir:
                 # Save checkpoint every 10%
                 progress = (sample_i + 1) / total_samples
                 if progress * 100 % 10 == 0:  # At 10%, 20%, etc
@@ -181,7 +182,10 @@ class AIAgent:
 
 
 def evaluate_training_progress(checkpoint_dir="checkpoints/training_progress"):
-    """Run agents from all checkpoints simultaneously in a grid."""
+    """Run agents from all checkpoints simultaneously
+    TODO: Display in grid or streamwrapper
+    TODO: multiprocess/thread if possible
+    """
     import math
 
     from env import EnvRed
@@ -192,8 +196,6 @@ def evaluate_training_progress(checkpoint_dir="checkpoints/training_progress"):
 
     # Calculate grid dimensions
     grid_size = math.ceil(math.sqrt(n_agents))
-    window_width = 160  # GB screen width
-    window_height = 144  # GB screen height
 
     # Initialize agents and environments
     agents = []
@@ -201,21 +203,10 @@ def evaluate_training_progress(checkpoint_dir="checkpoints/training_progress"):
 
     print(f"Setting up {n_agents} agents in {grid_size}x{grid_size} grid...")
 
-    for i, checkpoint in enumerate(checkpoints):
-        # Calculate window position
-        row = i // grid_size
-        col = i % grid_size
-        x_pos = col * window_width
-        y_pos = row * window_height
+    for checkpoint in checkpoints:
 
-        # Create environment with specified window position
         env = EnvRed(headless=False)
-        if hasattr(env.controller.pyboy, "window_position"):
-            env.controller.pyboy.window_position = (x_pos, y_pos)
-        elif hasattr(env.controller.pyboy, "set_window_position"):
-            env.controller.pyboy.set_window_position(x_pos, y_pos)
-        else:
-            print("Warning: Could not set window position")
+        # TODO: Lookup SDL position and/or pyboy for position/compositing
 
         # Create and load agent
         agent = AIAgent(exploration_rate=0.2)  # Low exploration to see learned behavior
@@ -230,7 +221,7 @@ def evaluate_training_progress(checkpoint_dir="checkpoints/training_progress"):
         print("\nRunning episodes...")
         # Run all agents for same number of steps
         episode_length = 2000
-        for step in tqdm.tqdm(range(episode_length)):
+        for _ in tqdm.tqdm(range(episode_length)):
             for env, agent in zip(envs, agents):
                 state = env.previous_state
                 action = agent.select_action(state)
