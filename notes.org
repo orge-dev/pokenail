@@ -1,3 +1,5 @@
+Exploration does okay with reward scaling, training on random inputs. After adding episodes with trained input, it does worse
+
 * TODO https://docs.pola.rs/user-guide/io/parquet/
 * TODO Fix cumulative reward training for exploration
 
@@ -282,3 +284,593 @@ Get higher selection probability.
 This mathematically balances exploration of unknown actions with exploitation of known good actions.
 
 *** 
+
+** exploration - potentialbasedrewardshaping
+
+**** good_cumulative_boosts_breadcumbs, give feedback on that part of the code
+
+Looking at the reward calculation in =train_from_replays= in =ai_agent.py=:
+
+#+begin_src python
+if (
+    good_cumulative_boosts_breadcumbs
+    and episode_cumulative_reward >= cumulative_reward_90p
+    and reward > 0
+):
+    reward = reward * 200
+else:
+    reward = 0
+#+end_src
+
+This approach has some interesting aspects:
+
+Pros:
+- Focuses on experiences from episodes that performed well (above 90th percentile)
+- Creates a form of curriculum learning by amplifying rewards from successful trajectories
+- The multiplier (200x) provides strong signal for good behaviors
+
+Potential issues:
+- Setting non-amplified rewards to 0 might be too extreme - could lose useful learning signal from decent but not exceptional episodes
+- The 90th percentile threshold is quite aggressive - might discard too many useful experiences 
+- The 200x multiplier is arbitrary and may need tuning
+
+Suggestions:
+1. Consider a graduated reward scaling rather than binary (0 or 200x)
+2. Could use multiple percentile tiers (e.g. 75th = 50x, 90th = 100x, 95th = 200x)
+3. Keep some base reward even for non-exceptional episodes
+4. Add comments explaining the reasoning behind the specific values chosen
+
+Would you like me to elaborate on any of these points?
+
+**** Please elaborate on all points
+
+Let's dive deep into each point:
+
+1. Graduated Reward Scaling:
+#+begin_src python
+# Current approach (binary):
+reward = reward * 200 if good_episode else 0
+
+# Graduated approach example:
+percentile_rank = get_percentile_rank(episode_cumulative_reward, cumulative_rewards)
+scaling_factor = max(1.0, percentile_rank)  # Linear scaling based on percentile
+reward = reward * scaling_factor
+#+end_src
+
+This provides smoother learning gradients and rewards incremental improvements.
+
+2. Multiple Percentile Tiers:
+#+begin_src python
+def get_reward_scaling(episode_reward, reward_thresholds):
+    if episode_reward >= reward_thresholds['95p']:
+        return 200
+    elif episode_reward >= reward_thresholds['90p']:
+        return 100
+    elif episode_reward >= reward_thresholds['75p']:
+        return 50
+    else:
+        return 1
+
+reward_thresholds = {
+    '95p': np.percentile(cumulative_rewards, 95),
+    '90p': np.percentile(cumulative_rewards, 90),
+    '75p': np.percentile(cumulative_rewards, 75)
+}
+
+scaling = get_reward_scaling(episode_cumulative_reward, reward_thresholds)
+reward = reward * scaling
+#+end_src
+
+This creates clearer progression tiers while still maintaining some reward signal for all experiences.
+
+3. Base Reward Preservation:
+#+begin_src python
+# Current approach:
+reward = reward * 200 if good_episode else 0
+
+# Modified approach:
+base_scaling = 1.0
+bonus_scaling = 199.0  # Total max scaling still 200x
+reward = (reward * base_scaling) + (reward * bonus_scaling if good_episode else 0)
+#+end_src
+
+This ensures some learning happens even from mediocre episodes while still heavily emphasizing good ones.
+
+4. Documentation:
+#+begin_src python
+def calculate_reward_scaling(episode_reward, cumulative_rewards):
+    """Calculate reward scaling factor based on episode performance.
+    
+    Args:
+        episode_reward: The cumulative reward for this episode
+        cumulative_rewards: Historical rewards for percentile calculation
+        
+    Returns:
+        float: Reward scaling factor
+    
+    Design choices:
+    - 90th percentile threshold identifies consistently good episodes
+    - 200x multiplier chosen to:
+      a) Overcome noise from random exploration
+      b) Create strong enough gradient for Q-learning
+      c) Based on empirical testing showing learning stability
+    - Base reward preserved to maintain exploration
+    """
+    percentile_90 = np.percentile(cumulative_rewards, 90)
+    base_scaling = 1.0
+    bonus_scaling = 199.0
+    
+    if episode_reward >= percentile_90:
+        return base_scaling + bonus_scaling
+    return base_scaling
+#+end_src
+
+Additional Considerations:
+
+1. Dynamic Scaling:
+#+begin_src python
+# Scale could adjust based on training progress
+training_progress = sample_i / total_samples
+max_scaling = 200 * (1 - training_progress)  # Gradually reduce scaling
+#+end_src
+
+2. Memory Prioritization:
+#+begin_src python
+# Could tie into prioritized experience replay
+experience_priority = reward * scaling_factor
+replay_buffer.add(experience, priority=experience_priority)
+#+end_src
+
+3. Validation:
+#+begin_src python
+# Add metrics to validate reward scaling effectiveness
+if sample_i % 1000 == 0:
+    avg_reward = np.mean([exp['reward'] for exp in recent_experiences])
+    avg_scaled_reward = np.mean([exp['scaled_reward'] for exp in recent_experiences])
+    print(f"Avg reward: {avg_reward:.2f}, Scaled: {avg_scaled_reward:.2f}")
+#+end_src
+
+The key is finding the right balance between:
+- Emphasizing good behaviors strongly enough to learn from them
+- Not completely discarding less optimal but still informative experiences
+- Maintaining enough exploration through base rewards
+- Creating clear but achievable progression targets
+
+Would you like me to elaborate on any specific aspect of these implementations?
+
+**** Do any of these strategies have similarities to techniques found successfull in reinforcement learning papers
+
+Yes, several of these strategies parallel established RL techniques from literature:
+
+1. *Prioritized Experience Replay* (PER) - Schaul et al., 2015
+#+begin_src python
+# Our current approach of boosting rewards from good episodes is a simple form of:
+reward = reward * 200 if episode_cumulative_reward >= cumulative_reward_90p else 0
+
+# PER instead assigns priorities based on TD-error:
+priority = |reward + gamma * max_Q(s') - Q(s,a)|
+#+end_src
+PER is generally more principled as it prioritizes surprising/informative experiences rather than just high-reward ones.
+
+2. *Curriculum Learning* - Bengio et al., 2009
+Our percentile-based approach resembles curriculum learning:
+#+begin_src python
+# Our tiered rewards:
+if episode_reward >= reward_thresholds['95p']:
+    scaling = 200
+elif episode_reward >= reward_thresholds['90p']:
+    scaling = 100
+#+end_src
+But established curriculum approaches usually structure the environment/tasks rather than just reward scaling.
+
+3. *Hindsight Experience Replay* (HER) - Andrychowicz et al., 2017
+While we boost rewards post-hoc, HER more formally reframes experiences with different goals:
+#+begin_src python
+# HER would store multiple versions of each trajectory with different goals
+# Rather than our simpler reward boosting:
+reward = reward * scaling_factor if good_episode else reward
+#+end_src
+
+4. *Reward Shaping* - Ng et al., 1999
+Our approach is a form of reward shaping, but the classical theory suggests preserving optimal policies through potential functions:
+#+begin_src python
+# Proper reward shaping:
+shaped_reward = reward + gamma * Phi(next_state) - Phi(state)
+
+# vs our current approach:
+shaped_reward = reward * scaling  # Could violate policy invariance
+#+end_src
+
+Would you like me to elaborate on any of these connections or discuss other relevant RL techniques?
+
+**** Explain potential functions, implementation and theory / motivation
+
+Potential-based reward shaping is a theoretically grounded way to modify rewards without changing the optimal policy. Here's a breakdown:
+
+Theory:
+#+begin_src 
+F(s,a,s') = γΦ(s') - Φ(s)
+
+where:
+- F is the shaping reward added to environment reward
+- Φ is the potential function mapping states to real numbers 
+- γ is the discount factor
+- s,s' are current/next states
+#+end_src
+
+The key insight is that this form guarantees policy invariance - the optimal policy remains unchanged regardless of shaping.
+
+Example Implementation:
+#+begin_src python
+class PotentialBasedRewardShaping:
+    def __init__(self, gamma=0.99):
+        self.gamma = gamma
+    
+    def potential(self, state: EnvironmentState) -> float:
+        """Map state to potential value.
+        
+        Higher potential = closer to goal state.
+        """
+        # Example: Use distance to goal as potential
+        target_pos = (309, 99)  # Oak's lab coordinates
+        distance = np.sqrt(
+            (state.position[0] - target_pos[0])**2 + 
+            (state.position[1] - target_pos[1])**2
+        )
+        
+        # Convert distance to potential (closer = higher potential)
+        potential = 1000 / (1 + distance)
+        
+        # Could incorporate other state features
+        if state.has_oaks_parcel:
+            potential += 500
+            
+        return potential
+
+    def shaped_reward(self, state, action, next_state, env_reward):
+        """Add shaping reward to environment reward."""
+        shaping = (
+            self.gamma * self.potential(next_state) - 
+            self.potential(state)
+        )
+        return env_reward + shaping
+#+end_src
+
+Usage in training loop:
+#+begin_src python
+shaper = PotentialBasedRewardShaping()
+
+def train_from_replays(self):
+    for experience in replay_buffer:
+        state = experience["state"]
+        next_state = experience["next_state"] 
+        env_reward = experience["reward"]
+        
+        # Get shaped reward
+        shaped_reward = shaper.shaped_reward(
+            state, action, next_state, env_reward
+        )
+        
+        # Update Q-values using shaped reward
+        self.update_q_table(state, action, next_state, shaped_reward)
+#+end_src
+
+The motivation is to provide more immediate feedback while preserving optimal behavior. For example, in Pokémon:
+- Raw reward might only come from getting Oak's Parcel
+- But potential function gives higher values for being closer to Oak's lab
+- Agent gets reward signal for moving in right direction
+- Yet optimal policy (shortest path to parcel) remains unchanged
+
+This is more principled than our current arbitrary reward scaling, though requires careful potential function design.
+
+Would you like me to elaborate on potential function design strategies or show more implementation details?
+
+***** How is it optimal
+
+Let me explain why potential-based shaping preserves optimality:
+
+1. *Mathematical Proof Sketch*
+#+begin_src 
+Let V*(s) be optimal value function for original rewards R(s,a,s')
+Let V'(s) be value function with shaped rewards R'(s,a,s') where:
+R'(s,a,s') = R(s,a,s') + γΦ(s') - Φ(s)
+
+Key insight: V'(s) = V*(s) + Φ(s)
+
+Proof:
+- For any policy π, shaped value function V'π differs from original Vπ by Φ(s)
+- Therefore optimal policy under shaped rewards must be optimal under original rewards
+#+end_src
+
+2. *Concrete Example*:
+#+begin_src python
+# Consider two paths to Oak's lab:
+# Path A: 10 steps
+# Path B: 20 steps
+
+class SimpleExample:
+    def potential(self, steps_to_goal):
+        return 100 / (1 + steps_to_goal)
+    
+    def demonstrate_paths(self):
+        # Path A (optimal)
+        state_A = 10  # steps remaining
+        next_state_A = 9
+        
+        # Original reward (sparse)
+        orig_reward_A = 0  # no reward until goal
+        
+        # Shaped reward
+        shaping_A = (
+            0.99 * self.potential(9) -  # γΦ(s') 
+            self.potential(10)          # Φ(s)
+        )
+        shaped_reward_A = orig_reward_A + shaping_A
+        
+        # Path B (suboptimal) 
+        state_B = 20
+        next_state_B = 19
+        
+        # Same calculation for longer path
+        shaping_B = (
+            0.99 * self.potential(19) -
+            self.potential(20)
+        )
+        shaped_reward_B = orig_reward_B + shaping_B
+        
+        # Key: While both get immediate rewards,
+        # Path A's accumulated shaped reward will still be higher
+#+end_src
+
+3. *Why It Preserves Optimality*:
+#+begin_src python
+def explain_optimality():
+    """
+    1. The shaping term γΦ(s') - Φ(s) forms a telescoping series
+    
+    2. For any trajectory s0,s1,...,sn:
+       Sum of shaping = γΦ(s1) - Φ(s0) +
+                       γΦ(s2) - Φ(s1) +
+                       ... +
+                       γΦ(sn) - Φ(sn-1)
+                     = -Φ(s0) + γ^nΦ(sn)
+    
+    3. This means total shaped reward only depends on:
+       - Start state (same for all trajectories)
+       - Final state (same reward for reaching goal)
+       - Path length (through γ^n term)
+       
+    4. Therefore shorter paths to goal remain optimal
+    """
+#+end_src
+
+4. *Practical Implementation*:
+#+begin_src python
+class PokemonShaping:
+    def __init__(self, gamma=0.99):
+        self.gamma = gamma
+        self.oak_lab_pos = (309, 99)
+        
+    def potential(self, state: EnvironmentState) -> float:
+        # Distance component
+        dist = manhattan_distance(state.position, self.oak_lab_pos)
+        distance_potential = 1000 / (1 + dist)
+        
+        # Progress component
+        progress_potential = 0
+        if state.has_oaks_parcel:
+            progress_potential += 500
+            
+        return distance_potential + progress_potential
+        
+    def shaped_reward(self, state, next_state, env_reward):
+        shaping = (
+            self.gamma * self.potential(next_state) -
+            self.potential(state)
+        )
+        return env_reward + shaping
+
+    def update_agent(self, state, action, next_state, env_reward):
+        shaped_reward = self.shaped_reward(state, next_state, env_reward)
+        # Even
+
+*** I dont want to define reward in terms of location relative to a specific location, like oaks lab. I want to reward for exploration more generally. can I still use this potential approach
+
+Yes! For exploration-based potential functions, we can use concepts like state visitation counts or coverage of the map. Here's how:
+
+#+begin_src python
+class ExplorationPotential:
+    def __init__(self, gamma=0.99, vicinity_size=2):
+        self.gamma = gamma
+        self.vicinity_size = vicinity_size
+        # Track visited areas with a set of coordinates
+        self.visited_coords = set()
+        self.nearly_visited_coords = set()
+        
+    def add_vicinity_to_nearly_visited(self, position):
+        """Add 5x5 area around position to nearly_visited"""
+        for dy in range(-self.vicinity_size, self.vicinity_size + 1):
+            for dx in range(-self.vicinity_size, self.vicinity_size + 1):
+                nearby = (position[0] + dy, position[1] + dx)
+                self.nearly_visited_coords.add(nearby)
+
+    def potential(self, state: EnvironmentState) -> float:
+        """Potential increases with exploration coverage"""
+        # Add current position and vicinity to visited sets
+        self.visited_coords.add(state.position)
+        self.add_vicinity_to_nearly_visited(state.position)
+        
+        # Potential based on total unique areas discovered
+        return len(self.nearly_visited_coords)
+
+    def shaped_reward(self, state, next_state, env_reward):
+        """Reward shaping using the potential difference"""
+        shaping = (
+            self.gamma * self.potential(next_state) -
+            self.potential(state)
+        )
+        return env_reward + shaping
+#+end_src
+
+This maintains the theoretical guarantees while rewarding exploration because:
+1. Higher potential for states that have led to more exploration
+2. The shaping term rewards transitions that increase coverage
+3. Still forms a telescoping series, preserving optimality for paths that maximize exploration
+
+We could also add other exploration metrics to the potential:
+
+#+begin_src python
+class SophisticatedExplorationPotential:
+    def __init__(self, gamma=0.99):
+        self.gamma = gamma
+        self.visited_coords = set()
+        self.visit_counts = defaultdict(int)
+        self.edge_counts = defaultdict(int)
+        
+    def potential(self, state: EnvironmentState) -> float:
+        """Multiple components in exploration potential"""
+        # 1. Coverage potential
+        coverage = len(self.visited_coords)
+        
+        # 2. Novelty potential (reward visiting less frequent areas)
+        pos = state.position
+        novelty = 1.0 / (1.0 + self.visit_counts[pos])
+        
+        # 3. Frontier potential (reward being near unexplored areas)
+        frontier_bonus = self._calculate_frontier_bonus(pos)
+        
+        # Update tracking
+        self.visited_coords.add(pos)
+        self.visit_counts[pos] += 1
+        
+        return (
+            coverage * 1.0 +      # Base exploration term
+            novelty * 50.0 +      # Encourage visiting new areas
+            frontier_bonus * 25.0  # Encourage frontier exploration
+        )
+    
+    def _calculate_frontier_bonus(self, pos):
+        """Higher bonus for positions adjacent to unexplored areas"""
+        adjacent = self._get_adjacent_positions(pos)
+        unexplored = sum(1 for adj in adjacent if adj not in self.visited_coords)
+        return unexplored / len(adjacent)
+#+end_src
+
+This approach rewards:
+- Discovering new areas
+- Revisiting less frequent locations
+- Exploring edges of known territory
+
+Would you like me to elaborate on any of these approaches or show how to integrate them with the existing replay buffer training?
+
+**** Show how to integrate 
+
+Here's how to integrate the exploration-based potential shaping with the replay training:
+
+#+begin_src python
+class AIAgent:
+    def __init__(self, learning_rate=0.05, discount_factor=0.9, exploration_rate=0.7):
+        self.q_table = defaultdict(lambda: np.zeros(len(Actions.list())))
+        self.learning_rate = learning_rate
+        self.discount_factor = discount_factor
+        self.exploration_rate = exploration_rate
+        # Add potential shaping
+        self.shaper = ExplorationPotential(gamma=discount_factor)
+
+    def train_from_replays(self, agent_id=None, replays_dir="replays"):
+        """Train agent using stored replay experiences with potential-based shaping"""
+        all_experiences = []
+        
+        # Load experiences (existing code)
+        print("Loading replay files")
+        for filename in tqdm.tqdm(list(os.listdir(replays_dir))[:1000]):
+            if filename.endswith(".pkl"):
+                replay_buffer = ReplayBuffer()
+                replay_buffer.load(os.path.join(replays_dir, filename))
+                all_experiences.extend(replay_buffer.buffer)
+
+        print(f"Collected {len(all_experiences)} experiences")
+        
+        # Group experiences by episode to maintain exploration tracking
+        episodes = self._group_experiences_by_episode(all_experiences)
+        
+        print("Training from episodes")
+        for episode_idx, episode in enumerate(tqdm.tqdm(episodes)):
+            # Reset exploration tracking for each episode
+            self.shaper = ExplorationPotential(gamma=self.discount_factor)
+            
+            # Process each step in episode
+            for experience in episode:
+                state = experience["state"]
+                action = experience["action"]
+                next_state = experience["next_state"]
+                env_reward = experience["reward"]
+                
+                # Get shaped reward using potential difference
+                shaped_reward = self.shaper.shaped_reward(
+                    state, 
+                    next_state,
+                    env_reward
+                )
+                
+                # Update Q-table with shaped reward
+                self._update_q_value(state, action, next_state, shaped_reward)
+
+                # Save checkpoint periodically
+                if agent_id and episode_idx % 100 == 0:
+                    self.save_state(f"checkpoints/{agent_id}_episode_{episode_idx}.pkl")
+
+    def _group_experiences_by_episode(self, experiences):
+        """Group experiences into episodes based on done flag"""
+        episodes = []
+        current_episode = []
+        
+        for exp in experiences:
+            current_episode.append(exp)
+            if exp["done"]:
+                episodes.append(current_episode)
+                current_episode = []
+        
+        # Add final episode if not empty
+        if current_episode:
+            episodes.append(current_episode)
+            
+        return episodes
+
+    def _update_q_value(self, state, action, next_state, shaped_reward):
+        """Update Q-table using Q-learning update rule"""
+        action_idx = Actions.list().index(action)
+        
+        # Get max Q-value for next state
+        next_max_q = np.max(self.q_table[next_state])
+        
+        # Current Q-value
+        current_q = self.q_table[state][action_idx]
+        
+        # Q-learning update
+        new_q = current_q + self.learning_rate * (
+            shaped_reward + 
+            self.discount_factor * next_max_q - 
+            current_q
+        )
+        
+        self.q_table[state][action_idx] = new_q
+
+#+end_src
+
+And the ExplorationPotential class with more debug info:
+
+#+begin_src python
+class ExplorationPotential:
+    def __init__(self, gamma=0.99, vicinity_size=2, debug=False):
+        self.gamma = gamma
+        self.vicinity_size = vicinity_size
+        self.visited_coords = set()
+        self.nearly_visited_coords = set()
+        self.debug = debug
+        
+        # Track metrics
+        self.total_potentials = []
+        self
+
+**** 
