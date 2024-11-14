@@ -6,10 +6,6 @@ import os
 from multiprocessing import Pool, cpu_count
 
 
-# checkpoints/from_replays/agent_state_20241109_084928_f8pq5ciG.pkl
-# from 10_000_000 steps traing on cumulative reward. with 0.2 exploration, does poorly
-
-
 def parse_arguments():
     parser = argparse.ArgumentParser(
         description="Run Pokémon Red with AI or manual control."
@@ -19,10 +15,10 @@ def parse_arguments():
     )
     parser.add_argument("--headless", action="store_true", help="Run in headless mode")
     parser.add_argument(
-        "--episodes", type=int, default=1000, help="Number of episodes to run"
+        "--episodes", type=int, default=100, help="Number of episodes to run"
     )
     parser.add_argument(
-        "--episode_length", type=int, default=10000, help="Steps per episode"
+        "--episode_length", type=int, default=5000, help="Steps per episode"
     )
     parser.add_argument(
         "--train_from_replays",
