@@ -1,7 +1,7 @@
 [project]
 name = "pokenail"
 version = "0.1.0"
-description = "AI learns Pokemon Red"
+description = "AI learns Pokémon Red"
 authors = [
     {name = "Dillon", email = "something@gmail.com"},
 ]
