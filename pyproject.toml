@@ -15,7 +15,8 @@ dependencies = [
     "setuptools==75.1.0",
     "typing_extensions==4.12.2",
     "wheel==0.44.0",
-    "tqdm"
+    "tqdm",
+    "matplotlib==3.9.2"
 ]
 
 [tool.setuptools]
