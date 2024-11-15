@@ -4,9 +4,6 @@ Exploration does okay with reward scaling, training on random inputs. After addi
 * TODO Fix cumulative reward training for exploration
 
 ** TODO Rescale cumulative rewards retroactively
-:LOGBOOK:
-CLOCK: [2024-11-11 Mon 09:42]--[2024-11-11 Mon 09:42] =>  0:00
-:END:
 
 I.e., now we have:
 
@@ -53,21 +50,15 @@ if self.read_m("wCurrentMenuItem") == 2:
 
 Note: lookup of this symbol fails, but we can read from the hex addr
 
-* TODO Integrate streamwrapper
-
 * TODO Fix battle state
-:LOGBOOK:
-CLOCK: [2024-11-11 Mon 09:22]--[2024-11-11 Mon 09:33] =>  0:11
-:END:
+
+May be fixed, need to test
 
 Regenerated training data with new menu state. Now to train! And generate more data with non-1.0
 
 checkpoints/from_replays/agent_state_20241111_142424_9v2z4GfV.pkl
 
 * TODO Eval models performance (in terms of cumulative reward) after training / on-demand
-:LOGBOOK:
-CLOCK: [2024-11-11 Mon 09:33]--[2024-11-11 Mon 09:33] =>  0:00
-:END:
 
 * TODO  better sampling
 
