@@ -1,10 +1,12 @@
 import argparse
+import concurrent.futures
 import os
 from multiprocessing import Pool, cpu_count
 
 from ai_agent import AIAgent, evaluate_training_progress
 from env import EnvRed
 from utils import generate_timestamped_id
+from web_viz import WebViz
 
 
 def parse_arguments():
@@ -117,44 +119,57 @@ def run_episode(args, environment=None, exploration_rate=1.0):
     else:
         should_close_environment = False
 
+    web_viz = WebViz()
+    background_tasks = set()
+
     try:
-        print(f"\n*** Starting episode {episode_num}")
-        # add episode num to filename in case timestamps collide when running in parallel
-        episode_id = f"{generate_timestamped_id()}_ep{episode_num}"
-        ai_agent = AIAgent(exploration_rate=exploration_rate)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as thread_pool:
+            print(f"\n*** Starting episode {episode_num}")
+            # add episode num to filename in case timestamps collide when running in parallel
+            episode_id = f"{generate_timestamped_id()}_ep{episode_num}"
+            ai_agent = AIAgent(exploration_rate=exploration_rate)
 
-        if agent_file and os.path.exists(agent_file):
-            ai_agent.load_state(agent_file)
+            if agent_file and os.path.exists(agent_file):
+                ai_agent.load_state(agent_file)
 
-        environment.reset()
-        state = environment.state()
-        step = 0
-        final_cumulative_reward = None
-        while step < episode_length:
-            step += 1
-            if step % 100 == 0:
-                ai_agent.save_state(f"checkpoints/agent_state_{episode_id}.pkl")
+            environment.reset()
+            state = environment.state()
+            step = 0
+            final_cumulative_reward = None
+            while step < episode_length:
+                step += 1
+                if step % 100 == 0:
+                    ai_agent.save_state(f"checkpoints/agent_state_{episode_id}.pkl")
 
-            action = ai_agent.select_action(state)
-            next_state, _, cumulative_reward, done, _ = environment.step(action, False)
-            final_cumulative_reward = cumulative_reward  # Update the final value
+                action = ai_agent.select_action(state)
+                next_state, _, cumulative_reward, done, _ = environment.step(
+                    action, False
+                )
+                final_cumulative_reward = cumulative_reward  # Update the final value
 
-            if step % 1000 == 0 or step == episode_length:
-                current_pos = next_state.position
-                print(f"\nEpisode {episode_num} step {step}/{episode_length}:")
-                print(f"Total reward: {environment.total_reward:.2f}")
-                print(f"Current position: {current_pos}")
+                if step % 1000 == 0 or step == episode_length:
+                    current_pos = next_state.position
+                    print(f"\nEpisode {episode_num} step {step}/{episode_length}:")
+                    print(f"Total reward: {environment.total_reward:.2f}")
+                    print(f"Current position: {current_pos}")
 
-            state = next_state
-            if done:
-                break
+                fut = thread_pool.submit(
+                    web_viz.broadcast_position, environment.local_position
+                )
+                background_tasks.add(fut)
+                fut.add_done_callback(background_tasks.discard)
 
-        print(
-            f"\nEpisode {episode_num} finished with cumulative reward: {final_cumulative_reward}"
-        )
-        ai_agent.save_state(f"checkpoints/agent_state_{episode_id}.pkl")
-        environment.save_episode_stats(episode_id)
-        return episode_id
+                state = next_state
+                if done:
+                    break
+
+            print(
+                f"\nEpisode {episode_num} finished with cumulative reward: {final_cumulative_reward}"
+            )
+            ai_agent.save_state(f"checkpoints/agent_state_{episode_id}.pkl")
+            environment.save_episode_stats(episode_id)
+
+            return episode_id
 
     finally:
         if should_close_environment:
@@ -181,7 +196,7 @@ def main():
         print("\nEvaluating final agent...")
         run_episode(
             (1, 2000, False, q_state_filename),
-            exploration_rate=0.2,
+            # exploration_rate=0.2,
         )
 
         print("\nEvaluating training progress...")
@@ -204,7 +219,7 @@ def main():
                     episode_id = run_episode(
                         (i + 1, args.episode_length, args.headless, agent_file),
                         environment=environment,
-                        exploration_rate=0.2,  # use q table when not headless, so we see AI actions
+                        # exploration_rate=0.2,  # use q table when not headless, so we see AI actions
                     )
                     episode_ids.append(episode_id)
             finally:

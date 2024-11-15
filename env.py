@@ -48,6 +48,7 @@ class EnvRed:
         self.steps_to_battle = None
         self.last_distance_reward = None
         self.prev_position = None
+        self.local_position = self.controller.get_game_coords()
         self.position = self.controller.get_global_coords()
         self.previous_items = dict()
         self.nearly_visited_coords = set()
@@ -130,6 +131,7 @@ class EnvRed:
 
         self.controller.pyboy.tick()
         self.battle = self.controller.is_in_battle()
+        self.local_position = self.controller.get_game_coords()
         self.position = self.controller.get_global_coords()
         self.visited_coords.add(tuple(self.position))  # Add this line
 

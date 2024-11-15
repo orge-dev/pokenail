@@ -1,4 +1,5 @@
 import logging
+import os
 
 from pyboy import PyBoy
 
@@ -15,7 +16,11 @@ class GameController:
     MEMORY_MENU_SELECTED = 0xCC26
 
     def __init__(self, rom_path, emulation_speed=1.0, headless=False):
-        self.pyboy = PyBoy(rom_path, window="null" if headless else "SDL2")
+        self.pyboy = PyBoy(
+            rom_path,
+            window="null" if headless else "SDL2",
+            symbols=os.path.join(os.path.dirname(__file__), "pokered.sym"),
+        )
         if not self.pyboy:
             raise RuntimeError("Failed to initialize PyBoy with the given ROM.")
 
