@@ -27,11 +27,8 @@ class EnvironmentState:
 
 
 class EnvRed:
-    def __init__(self, learning_rate=0.05, discount_factor=0.9, headless=False):
+    def __init__(self, headless=False):
         self.controller = GameController(ROM_PATH, EMULATION_SPEED, headless=headless)
-        self.q_table = defaultdict(lambda: np.zeros(len(Actions.list())))
-        self.learning_rate = learning_rate
-        self.discount_factor = discount_factor
 
         self.reset()
 
@@ -202,17 +199,6 @@ class EnvRed:
 
         self.previous_state = next_state
         return next_state, step_reward, cumulative_reward, done, {}
-
-    def update_q_table(self, state, action, next_state, reward):
-        """Updates the Q-table for the current environment state and reward."""
-        state, next_state = tuple(state.items()), tuple(next_state.items())
-        action_index = Actions.list().index(action)
-        best_next_action_value = np.max(self.q_table[next_state])
-        self.q_table[state][action_index] += self.learning_rate * (
-            reward
-            + self.discount_factor * best_next_action_value
-            - self.q_table[state][action_index]
-        )
 
     def save_episode_stats(self, episode_id):
         """Save episode statistics."""
