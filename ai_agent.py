@@ -124,6 +124,7 @@ class AIAgent:
             "90p": np.percentile(cumulative_rewards, 90),
             "75p": np.percentile(cumulative_rewards, 75),
         }
+        print("reward thresholds", reward_thresholds)
 
         for sample_i, (
             experience,

@@ -21,7 +21,7 @@ def parse_arguments():
         "--episodes", type=int, default=100, help="Number of episodes to run"
     )
     parser.add_argument(
-        "--episode_length", type=int, default=10000, help="Steps per episode"
+        "--episode_length", type=int, default=1000, help="Steps per episode"
     )
     parser.add_argument(
         "--train_from_replays",
@@ -133,7 +133,7 @@ def run_episode(args, environment=None, exploration_rate=1.0):
                 ai_agent.load_state(agent_file)
 
             environment.reset()
-            state = environment.state()
+            state = environment.state_for_agent()
             step = 0
             final_cumulative_reward = None
             while step < episode_length:
@@ -196,7 +196,7 @@ def main():
         print("\nEvaluating final agent...")
         run_episode(
             (1, 2000, False, q_state_filename),
-            # exploration_rate=0.2,
+            exploration_rate=0.2,
         )
 
         print("\nEvaluating training progress...")

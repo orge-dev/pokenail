@@ -53,9 +53,10 @@ class EnvRed:
         # Debug vars
         self.last_cumulative_reward = None
 
-        self.previous_state = self.state()
+        self.previous_state = self.state_for_agent()
 
-    def state(self):
+        
+    def state_for_agent(self):
         return EnvironmentState(
             position=self.position,
             battle=self.battle,
@@ -154,16 +155,7 @@ class EnvRed:
         step_reward = self.calculate_reward(self.position)
         self.total_reward += step_reward
 
-        next_state = EnvironmentState(
-            position=self.position,
-            battle=self.battle,
-            prev_position=self.previous_state.position,
-            has_oaks_parcel=self.has_oaks_parcel(),
-            has_pokedex=self.has_pokedex(),
-            menu_y=self.controller.mem(self.controller.MEMORY_MENU_Y),
-            menu_x=self.controller.mem(self.controller.MEMORY_MENU_X),
-            menu_selected=self.controller.mem(self.controller.MEMORY_MENU_SELECTED),
-        )
+        next_state = self.state_for_agent()
 
         # # Print changed fields
         # for field in next_state.__dataclass_fields__:
@@ -220,6 +212,9 @@ class EnvRed:
 
         os.makedirs("replays", exist_ok=True)
         self.replay_buffer.save(f"replays/replay_{episode_id}.pkl")
+
+    def save_state(self, save_dir):
+        ...
 
     def close(self):
         self.controller.close()
