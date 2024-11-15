@@ -3,7 +3,7 @@ name = "pokenail"
 version = "0.1.0"
 description = "AI learns Pokémon Red"
 authors = [
-    {name = "Dillon", email = "something@gmail.com"},
+    {name = "orge-dev"},
 ]
 requires-python = ">=3.12"
 license = {text = "MIT"}
@@ -15,8 +15,9 @@ dependencies = [
     "setuptools==75.1.0",
     "typing_extensions==4.12.2",
     "wheel==0.44.0",
-    "tqdm",
-    "matplotlib==3.9.2"
+    "tqdm==4.67.0",
+    "matplotlib==3.9.2",
+    "websockets==14.1"
 ]
 
 [tool.setuptools]
