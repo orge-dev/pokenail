@@ -18,7 +18,7 @@ from replay_buffer import ReplayBuffer
 class EnvironmentState:
     position: tuple
     battle: bool
-    prev_position: tuple | None
+    # prev_position: tuple | None
     has_oaks_parcel: bool
     has_pokedex: bool
     menu_y: int
@@ -44,11 +44,15 @@ class EnvRed:
         self.total_reward = 0
         self.steps_to_battle = None
         self.last_distance_reward = None
-        self.prev_position = None
+        # self.prev_position = None
         self.local_position = self.controller.get_game_coords()
         self.position = self.controller.get_global_coords()
         self.previous_items = dict()
         self.nearly_visited_coords = set()
+
+        # Make sure to do this on reset so that we don't get "null" inputs on step 1
+        # giving reward even though we haven't actually moved
+        self.update_nearly_visited_coords()
 
         # Debug vars
         self.last_cumulative_reward = None
@@ -60,7 +64,7 @@ class EnvRed:
         return EnvironmentState(
             position=self.position,
             battle=self.battle,
-            prev_position=self.prev_position,
+            # prev_position=self.prev_position,
             has_oaks_parcel=self.has_oaks_parcel(),
             has_pokedex=self.has_pokedex(),
             menu_y=self.controller.mem(self.controller.MEMORY_MENU_Y),
@@ -122,6 +126,13 @@ class EnvRed:
 
         return len(self.nearly_visited_coords) - self.previous_nearly_visited_coords
 
+    def update_nearly_visited_coords(self):
+        # Add 5x5 area around current position to nearly_visited_coords
+        for dy in range(-2, 3):  # -2 to 2 for 5x5 area
+            for dx in range(-2, 3):
+                nearby_pos = (self.position[0] + dy, self.position[1] + dx)
+                self.nearly_visited_coords.add(nearby_pos)
+
     def step(self, action=None, manual=False, agent=None):
         self.current_step += 1
         if not manual and action is not None:
@@ -130,15 +141,12 @@ class EnvRed:
         self.controller.pyboy.tick()
         self.battle = self.controller.is_in_battle()
         self.local_position = self.controller.get_game_coords()
+        #self.prev_position = self.position
         self.position = self.controller.get_global_coords()
         self.visited_coords.add(tuple(self.position))  # Add this line
 
         self.previous_nearly_visited_coords = len(self.nearly_visited_coords)
-        # Add 5x5 area around current position to nearly_visited_coords
-        for dy in range(-2, 3):  # -2 to 2 for 5x5 area
-            for dx in range(-2, 3):
-                nearby_pos = (self.position[0] + dy, self.position[1] + dx)
-                self.nearly_visited_coords.add(nearby_pos)
+        self.update_nearly_visited_coords()
 
         # Check for new/changed items
         current_items = self.controller.get_items()
@@ -214,7 +222,7 @@ class EnvRed:
         self.replay_buffer.save(f"replays/replay_{episode_id}.pkl")
 
     def save_state(self, save_dir):
-        ...
+        raise NotImplementedError()
 
     def close(self):
         self.controller.close()

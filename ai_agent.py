@@ -19,18 +19,39 @@ class AIAgent:
         # Setting this .8 (not very low) seems to make agent much prefer
         # walking upwards in starting building than 1.0 why... maybe not enough episodes/due to sparse reward (lookup reward shaping? or go straight to ppo?)
         exploration_rate=1.0,
+        multiprocess_dict=None
     ):
         self.q_table = defaultdict(lambda: np.zeros(len(Actions.list())))
         self.learning_rate = learning_rate
         self.discount_factor = discount_factor
         self.exploration_rate = exploration_rate
+        self.multiprocess_dict = multiprocess_dict
 
     def select_action(self, state):
         """Selects the action with the highest Q-value from the Q-table for a given state."""
-        if np.random.random() < self.exploration_rate:
-            return np.random.choice(Actions.list())
-        action_index = np.argmax(self.q_table[state])
-        return Actions.list()[action_index]
+    
+        possible_actions = Actions.list()
+
+        # Exploit
+        if np.random.random() >= self.exploration_rate:
+            action_index = np.argmax(self.q_table[state])
+            return possible_actions[action_index]
+
+        # Explore
+        tried_state_actions = self.multiprocess_dict
+        if tried_state_actions is not None:
+            if state not in tried_state_actions:
+                tried_state_actions[state] = set()
+
+            already = tried_state_actions[state]
+            new_actions = [a for a in possible_actions if a not in already]
+            if new_actions:
+                choice = random.choice(new_actions)
+                # For some reason, .add doesn't work, so we = like this
+                tried_state_actions[state] = tried_state_actions[state] | {choice}
+                return choice
+    
+        return random.choice(possible_actions)
 
     def update_q_table(self, state, action, next_state, reward):
         """Updates Q-table using Q-learning algorithm"""

@@ -1,7 +1,7 @@
 import argparse
 import concurrent.futures
 import os
-from multiprocessing import Pool, cpu_count
+from multiprocessing import Manager, Pool, cpu_count
 
 from ai_agent import AIAgent, evaluate_training_progress
 from env import EnvRed
@@ -21,7 +21,7 @@ def parse_arguments():
         "--episodes", type=int, default=100, help="Number of episodes to run"
     )
     parser.add_argument(
-        "--episode_length", type=int, default=1000, help="Steps per episode"
+        "--episode_length", type=int, default=5000, help="Steps per episode"
     )
     parser.add_argument(
         "--train_from_replays",
@@ -112,7 +112,7 @@ def run_manual_mode():
 
 
 def run_episode(args, environment=None, exploration_rate=1.0):
-    episode_num, episode_length, headless, agent_file = args
+    episode_num, episode_length, headless, agent_file, multiprocess_dict = args
     if environment is None:
         should_close_environment = True
         environment = EnvRed(headless=headless)
@@ -127,7 +127,9 @@ def run_episode(args, environment=None, exploration_rate=1.0):
             print(f"\n*** Starting episode {episode_num}")
             # add episode num to filename in case timestamps collide when running in parallel
             episode_id = f"{generate_timestamped_id()}_ep{episode_num}"
-            ai_agent = AIAgent(exploration_rate=exploration_rate)
+            ai_agent = AIAgent(
+                exploration_rate=exploration_rate, multiprocess_dict=multiprocess_dict
+            )
 
             if agent_file and os.path.exists(agent_file):
                 ai_agent.load_state(agent_file)
@@ -195,7 +197,7 @@ def main():
 
         print("\nEvaluating final agent...")
         run_episode(
-            (1, 2000, False, q_state_filename),
+            (1, 2000, False, q_state_filename, None),
             exploration_rate=0.2,
         )
 
@@ -217,7 +219,7 @@ def main():
             try:
                 for i in range(args.episodes):
                     episode_id = run_episode(
-                        (i + 1, args.episode_length, args.headless, agent_file),
+                        (i + 1, args.episode_length, args.headless, agent_file, None),
                         environment=environment,
                         # exploration_rate=0.2,  # use q table when not headless, so we see AI actions
                     )
@@ -225,17 +227,27 @@ def main():
             finally:
                 environment.close()  # Only close environment after all episodes
         else:
-            # Parallel processing for multiple processes or headless mode
-            num_processes = args.processes or cpu_count()
-            print(f"Running {args.episodes} episodes using {num_processes} processes")
+            with Manager() as manager:
+                multiprocess_dict = manager.dict()
+                # Parallel processing for multiple processes or headless mode
+                num_processes = args.processes or cpu_count()
+                print(
+                    f"Running {args.episodes} episodes using {num_processes} processes"
+                )
 
-            episode_args = [
-                (i + 1, args.episode_length, args.headless, agent_file)
-                for i in range(args.episodes)
-            ]
+                episode_args = [
+                    (
+                        i + 1,
+                        args.episode_length,
+                        args.headless,
+                        agent_file,
+                        multiprocess_dict,
+                    )
+                    for i in range(args.episodes)
+                ]
 
-            with Pool(processes=num_processes) as pool:
-                episode_ids = pool.map(run_episode, episode_args, chunksize=1)
+                with Pool(processes=num_processes) as pool:
+                    episode_ids = pool.map(run_episode, episode_args, chunksize=1)
 
         print("\nCompleted episodes:", len(episode_ids))
 
