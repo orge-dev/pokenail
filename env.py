@@ -18,7 +18,7 @@ from replay_buffer import ReplayBuffer
 class EnvironmentState:
     position: tuple
     battle: bool
-    # prev_position: tuple | None
+    prev_position: tuple | None
     has_oaks_parcel: bool
     has_pokedex: bool
     menu_y: int
@@ -44,7 +44,7 @@ class EnvRed:
         self.total_reward = 0
         self.steps_to_battle = None
         self.last_distance_reward = None
-        # self.prev_position = None
+        self.prev_position = None
         self.local_position = self.controller.get_game_coords()
         self.position = self.controller.get_global_coords()
         self.previous_items = dict()
@@ -64,7 +64,7 @@ class EnvRed:
         return EnvironmentState(
             position=self.position,
             battle=self.battle,
-            # prev_position=self.prev_position,
+            prev_position=self.prev_position,
             has_oaks_parcel=self.has_oaks_parcel(),
             has_pokedex=self.has_pokedex(),
             menu_y=self.controller.mem(self.controller.MEMORY_MENU_Y),
@@ -141,7 +141,7 @@ class EnvRed:
         self.controller.pyboy.tick()
         self.battle = self.controller.is_in_battle()
         self.local_position = self.controller.get_game_coords()
-        #self.prev_position = self.position
+        self.prev_position = self.position
         self.position = self.controller.get_global_coords()
         self.visited_coords.add(tuple(self.position))  # Add this line
 
@@ -226,3 +226,4 @@ class EnvRed:
 
     def close(self):
         self.controller.close()
+

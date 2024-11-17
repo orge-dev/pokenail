@@ -1,4 +1,11 @@
-Exploration does okay with reward scaling, training on random inputs. After adding episodes with trained input, it does worse
+* TODO Save checkpoints on positions with best cumulative rewards, and start future envs/agents from that point
+
+How do we choose what to save/run?
+Keep provenance of "timelines"? To avoid going down a rabbit hole without sonide
+
+Choose runs that got to 90% of cumulative goal in < 20% steps, then continue from those checkpoints,  with many branches? Can choose stochastically wrt some measure of f(cumulative goal percentile, steps_to_reach)
+
+The advantage of the above, is we have a way to generate better episodes without modifying episode length, which may help training?
 
 * TODO https://docs.pola.rs/user-guide/io/parquet/
 * TODO Fix cumulative reward training for exploration
@@ -41,6 +48,8 @@ checkpoints/from_replays/agent_state_20241110_192800_dOzEJYF6.pkl
 Struggles in battles, need to fix menu state probably
 
 * TODO Use policy with non-1.0 exploration during training
+
+Exploration does okay with reward scaling, training on random inputs. After adding episodes with trained input, it does worse
 
 * TODO Go through pokemonred_puffer read_m calls, note important addrs
 like 
