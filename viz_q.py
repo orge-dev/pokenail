@@ -9,10 +9,10 @@ from actions import Actions
 
 def visualize_q_table(checkpoint_path, out_path):
     # Starting position
-    START_POS = (309, 228)
+    START_POS = (350, 108)
 
     # Define view window size around start position
-    WINDOW_SIZE = 50  # Will show 50x50 area around start
+    WINDOW_SIZE = 100  # Will show 50x50 area around start
 
     # Calculate bounds
     y_min = max(0, START_POS[0] - WINDOW_SIZE)
@@ -33,16 +33,12 @@ def visualize_q_table(checkpoint_path, out_path):
 
     # Color each position based on highest Q-value action
     for state in q_table:
-        print(f"got {state=}")
-        # Extract position from state tuple
-        for key, value in state:
-            if key == "position":
-                pos = value
-                break
+        #print(f"got {state=}")
+        pos = state.position
 
         # Check if position is in our window
         if (y_min <= pos[0] < y_max) and (x_min <= pos[1] < x_max):
-            print("including point")
+            #print("including point", pos)
             q_values = q_table[state]
             best_action = Actions.list()[np.argmax(q_values)]
             # Transform coordinates to window space
@@ -50,7 +46,8 @@ def visualize_q_table(checkpoint_path, out_path):
             window_x = pos[1] - x_min
             action_map[window_y, window_x] = action_to_num[best_action]
         else:
-            print("excluding point")
+            print("excluding point", pos)
+            pass
 
     # Plot
     plt.figure(figsize=(12, 12))
@@ -89,7 +86,7 @@ def main():
     # Process all checkpoint files
     checkpoints_dir = "checkpoints"
     for filename in os.listdir(checkpoints_dir):
-        if filename.startswith("agent_state_") and filename.endswith(".pkl"):
+        if filename.endswith(".pkl"):
             checkpoint_path = os.path.join(checkpoints_dir, filename)
             out_path = os.path.join(
                 out_dir, f"qtable_viz_{filename.replace('.pkl', '.png')}"
