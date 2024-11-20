@@ -1,13 +1,9 @@
 import os
 import pickle
-from collections import defaultdict
 from dataclasses import dataclass
 
 import numpy as np
 
-from actions import (
-    Actions,
-)  # Replace `actions` with the actual module name if different
 from config import EMULATION_SPEED, ROM_PATH
 from game_controller import GameController
 from replay_buffer import ReplayBuffer
@@ -59,7 +55,6 @@ class EnvRed:
 
         self.previous_state = self.state_for_agent()
 
-        
     def state_for_agent(self):
         return EnvironmentState(
             position=self.position,
@@ -165,13 +160,6 @@ class EnvRed:
 
         next_state = self.state_for_agent()
 
-        # # Print changed fields
-        # for field in next_state.__dataclass_fields__:
-        #     old_val = getattr(self.previous_state, field)
-        #     new_val = getattr(next_state, field)
-        #     # if old_val != new_val:
-        #     #     print(f"{field} changed: {old_val} -> {new_val}")
-
         if not manual and agent is not None:
             agent.update_q_table(self.previous_state, action, next_state, step_reward)
 
@@ -182,6 +170,13 @@ class EnvRed:
         if manual:
             if cumulative_reward != self.last_cumulative_reward:
                 print("cumulative reward", cumulative_reward)
+
+            # Print changed fields
+            for field in next_state.__dataclass_fields__:
+                old_val = getattr(self.previous_state, field)
+                new_val = getattr(next_state, field)
+                if old_val != new_val:
+                    print(f"{field} changed: {old_val} -> {new_val}")
         self.last_cumulative_reward = cumulative_reward
 
         # print("seen coords", cumulative_reward)
@@ -226,4 +221,3 @@ class EnvRed:
 
     def close(self):
         self.controller.close()
-

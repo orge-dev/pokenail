@@ -18,10 +18,10 @@ def parse_arguments():
     )
     parser.add_argument("--headless", action="store_true", help="Run in headless mode")
     parser.add_argument(
-        "--episodes", type=int, default=100, help="Number of episodes to run"
+        "--episodes", type=int, default=10000, help="Number of episodes to run"
     )
     parser.add_argument(
-        "--episode_length", type=int, default=5000, help="Steps per episode"
+        "--episode_length", type=int, default=500, help="Steps per episode"
     )
     parser.add_argument(
         "--train_from_replays",
@@ -32,7 +32,7 @@ def parse_arguments():
         "--processes",
         type=int,
         default=1,
-        help="Number of parallel processes (default: CPU count)",
+        help="Number of parallel processes (0 to use CPU count, default: 1)",
     )
     parser.add_argument(
         "--agent",

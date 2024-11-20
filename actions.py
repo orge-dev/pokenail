@@ -1,4 +1,3 @@
-# actions.py
 from enum import Enum
 
 
@@ -7,8 +6,8 @@ class Actions(Enum):
     DOWN = "DOWN"
     LEFT = "LEFT"
     RIGHT = "RIGHT"
-    ACTION1 = "A"  # Replace with actual action name
-    ACTION2 = "B"  # Replace with actual action name
+    A = "A"
+    B = "B"
 
     @classmethod
     def list(cls):

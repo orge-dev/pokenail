@@ -19,7 +19,7 @@ class AIAgent:
         # Setting this .8 (not very low) seems to make agent much prefer
         # walking upwards in starting building than 1.0 why... maybe not enough episodes/due to sparse reward (lookup reward shaping? or go straight to ppo?)
         exploration_rate=1.0,
-        multiprocess_dict=None
+        multiprocess_dict=None,
     ):
         self.q_table = defaultdict(lambda: np.zeros(len(Actions.list())))
         self.learning_rate = learning_rate
@@ -29,7 +29,11 @@ class AIAgent:
 
     def select_action(self, state):
         """Selects the action with the highest Q-value from the Q-table for a given state."""
-    
+
+        hack_action = self.run_from_battle_hack(state)
+        if hack_action is not None:
+            return hack_action.value
+
         possible_actions = Actions.list()
 
         # Exploit
@@ -50,19 +54,32 @@ class AIAgent:
                 # For some reason, .add doesn't work, so we = like this
                 tried_state_actions[state] = tried_state_actions[state] | {choice}
                 return choice
-    
+
         return random.choice(possible_actions)
+
+    def run_from_battle_hack(self, state):
+        if not state.battle:
+            return None
+
+        menu_y, menu_x, menu_selected = state.menu_y, state.menu_x, state.menu_selected
+
+        if menu_y == 14 and menu_x == 9 and menu_selected == 0:
+            return Actions.RIGHT
+        elif menu_y == 14 and menu_x == 15 and menu_selected == 0:
+            return Actions.DOWN
+        elif menu_y == 14 and menu_x == 15 and menu_selected == 1:
+            return Actions.A
+        elif menu_y == 14 and menu_x == 15 and menu_selected == 3:
+            return Actions.A
+
+        return None
 
     def update_q_table(self, state, action, next_state, reward):
         """Updates Q-table using Q-learning algorithm"""
-        # Convert dict states to tuples for hashing
-        # Get index of the action taken
         action_index = Actions.list().index(action)
 
-        # Get max Q-value for next state
         best_next_action_value = np.max(self.q_table[next_state])
 
-        # Q-learning update formula
         current_q = self.q_table[state][action_index]
         new_q = current_q + self.learning_rate * (
             reward + self.discount_factor * best_next_action_value - current_q
@@ -226,7 +243,6 @@ def evaluate_training_progress(checkpoint_dir="checkpoints/training_progress"):
     print(f"Setting up {n_agents} agents in {grid_size}x{grid_size} grid...")
 
     for checkpoint in checkpoints:
-
         env = EnvRed(headless=False)
         # TODO: Lookup SDL position and/or pyboy for position/compositing
 
