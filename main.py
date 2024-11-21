@@ -3,7 +3,7 @@ import concurrent.futures
 import os
 from multiprocessing import Manager, Pool, cpu_count
 
-from ai_agent import AIAgent, evaluate_training_progress
+from ai_agent import AIAgent
 from env import EnvRed
 from utils import generate_timestamped_id
 from web_viz import WebViz
@@ -202,7 +202,6 @@ def main():
         )
 
         print("\nEvaluating training progress...")
-        evaluate_training_progress()
 
     elif args.eval:
         evaluate_training_progress(args.eval)
@@ -221,7 +220,7 @@ def main():
                     episode_id = run_episode(
                         (i + 1, args.episode_length, args.headless, agent_file, None),
                         environment=environment,
-                        # exploration_rate=0.2,  # use q table when not headless, so we see AI actions
+                        exploration_rate=0.2,  # use q table when not headless, so we see AI actions
                     )
                     episode_ids.append(episode_id)
             finally:

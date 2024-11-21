@@ -33,38 +33,56 @@ def analyze_distributions(all_step_rewards, max_steps=3000):
     steps = range(1, min(max_steps + 1, max(all_step_rewards.keys()) + 1))
 
     medians = []
+    percentile_05 = []
     percentile_25 = []
     percentile_75 = []
     percentile_10 = []
     percentile_90 = []
+    percentile_99 = []
 
     print("Analyzing distributions...")
     for step in tqdm(steps):
         if step in all_step_rewards:
             rewards = all_step_rewards[step]
             medians.append(np.median(rewards))
+            percentile_05.append(np.percentile(rewards, 5))
             percentile_25.append(np.percentile(rewards, 25))
             percentile_75.append(np.percentile(rewards, 75))
             percentile_10.append(np.percentile(rewards, 10))
             percentile_90.append(np.percentile(rewards, 90))
+            percentile_99.append(np.percentile(rewards, 99))
         else:
             # Handle missing steps if any
             medians.append(np.nan)
+            percentile_05.append(np.nan)
             percentile_25.append(np.nan)
             percentile_75.append(np.nan)
             percentile_10.append(np.nan)
             percentile_90.append(np.nan)
+            percentile_99.append(np.nan)
 
-    return steps, medians, percentile_25, percentile_75, percentile_10, percentile_90
+    return (
+        steps,
+        medians,
+        percentile_05,
+        percentile_25,
+        percentile_75,
+        percentile_10,
+        percentile_90,
+        percentile_99,
+    )
 
 
 def create_visualization(data, output_file="cumulative_rewards_distribution.png"):
     """Create and save the visualization."""
-    steps, medians, p25, p75, p10, p90 = data
+    steps, medians, p05, p25, p75, p10, p90, p99 = data
 
     plt.figure(figsize=(15, 10))
 
     # Plot the different percentile ranges
+    plt.fill_between(
+        steps, p05, p99, alpha=0.1, color="red", label="5th-99th percentile"
+    )
     plt.fill_between(
         steps, p10, p90, alpha=0.2, color="blue", label="10th-90th percentile"
     )

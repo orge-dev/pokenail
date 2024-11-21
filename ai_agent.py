@@ -13,11 +13,8 @@ from replay_buffer import ReplayBuffer
 class AIAgent:
     def __init__(
         self,
-        learning_rate=0.05,
-        discount_factor=0.9,
-        # 1.0 = random, not using q table
-        # Setting this .8 (not very low) seems to make agent much prefer
-        # walking upwards in starting building than 1.0 why... maybe not enough episodes/due to sparse reward (lookup reward shaping? or go straight to ppo?)
+        learning_rate=0.1,
+        discount_factor=1.00,
         exploration_rate=1.0,
         multiprocess_dict=None,
     ):
@@ -28,8 +25,6 @@ class AIAgent:
         self.multiprocess_dict = multiprocess_dict
 
     def select_action(self, state):
-        """Selects the action with the highest Q-value from the Q-table for a given state."""
-
         hack_action = self.run_from_battle_hack(state)
         if hack_action is not None:
             return hack_action.value
@@ -95,7 +90,7 @@ class AIAgent:
         use_combined=False,  # TODO: Does this work?
         use_cumulative_reward_scaling=True,  # WIP
     ):
-        """Train agent using stored replay expeiences"""
+        """Train agent using stored replay experiences"""
 
         os.makedirs("replays_combined", exist_ok=True)
         combined_path = "replays_combined/latest_combined.pkl"
@@ -148,6 +143,8 @@ class AIAgent:
             self.save_state(checkpoint_path, do_print=True)
 
         def get_reward_scaling(episode_reward, reward_thresholds):
+            if episode_reward >= reward_thresholds["99p"]:
+                return 2000
             if episode_reward >= reward_thresholds["95p"]:
                 return 200
             elif episode_reward >= reward_thresholds["90p"]:
@@ -158,6 +155,7 @@ class AIAgent:
                 return 1
 
         reward_thresholds = {
+            "99p": np.percentile(cumulative_rewards, 99),
             "95p": np.percentile(cumulative_rewards, 95),
             "90p": np.percentile(cumulative_rewards, 90),
             "75p": np.percentile(cumulative_rewards, 75),
@@ -218,54 +216,3 @@ class AIAgent:
             self.q_table = defaultdict(
                 lambda: np.zeros(len(Actions.list())), pickle.load(file)
             )
-
-
-def evaluate_training_progress(checkpoint_dir="checkpoints/training_progress"):
-    """Run agents from all checkpoints simultaneously
-    TODO: Display in grid or streamwrapper
-    TODO: multiprocess/thread if possible
-    """
-    import math
-
-    from env import EnvRed
-
-    # Get all checkpoint files
-    checkpoints = sorted([f for f in os.listdir(checkpoint_dir) if f.endswith(".pkl")])
-    n_agents = len(checkpoints)
-
-    # Calculate grid dimensions
-    grid_size = math.ceil(math.sqrt(n_agents))
-
-    # Initialize agents and environments
-    agents = []
-    envs = []
-
-    print(f"Setting up {n_agents} agents in {grid_size}x{grid_size} grid...")
-
-    for checkpoint in checkpoints:
-        env = EnvRed(headless=False)
-        # TODO: Lookup SDL position and/or pyboy for position/compositing
-
-        # Create and load agent
-        agent = AIAgent(exploration_rate=0.2)  # Low exploration to see learned behavior
-        agent.load_state(os.path.join(checkpoint_dir, checkpoint))
-
-        agents.append(agent)
-        envs.append(env)
-
-        print(f"Loaded checkpoint {checkpoint}")
-
-    try:
-        print("\nRunning episodes...")
-        # Run all agents for same number of steps
-        episode_length = 2000
-        for _ in tqdm.tqdm(range(episode_length)):
-            for env, agent in zip(envs, agents):
-                state = env.previous_state
-                action = agent.select_action(state)
-                env.step(action)
-
-    finally:
-        print("Cleaning up...")
-        for env in envs:
-            env.close()
