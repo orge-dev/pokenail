@@ -1,3 +1,57 @@
+* Comparison to pokemonred_puffer
+
+They don't use map x/y in obs (agent observation?) They use screen render and map_id (and blackout_map_id?)
+They don't seem to store history of location/screens/inputs in the observation either, so how does it navigate?
+
+** visited_mask is same size as render field. what is it
+
+#+begin_src  python
+visited_mask = (
+    255
+    ,* np.repeat(
+        np.repeat(self.explore_map[gr - 4 : gr + 6, gc - 4 : gc + 6], 16 // scale, 0),
+        16 // scale,
+        -1,
+    )
+).astype(np.uint8)[6 // scale : -10 // scale, :]
+
+...
+
+self.explore_map = np.zeros(GLOBAL_MAP_SHAPE, dtype=np.float32)
+#+end_src
+
+#+begin_src python
+def update_seen_coords(self):
+    inc = 0.5 if (self.read_m("wMovementFlags") & 0b1000_0000) else self.exploration_inc
+
+    x_pos, y_pos, map_n = self.get_game_coords()
+    # self.seen_coords[(x_pos, y_pos, map_n)] = inc
+    cur_map_tileset = self.read_m("wCurMapTileset")
+    if cur_map_tileset not in self.seen_coords:
+        self.seen_coords[cur_map_tileset] = {}
+        self.seen_coords[cur_map_tileset][(x_pos, y_pos, map_n)] = min(
+            self.seen_coords[cur_map_tileset].get((x_pos, y_pos, map_n), 0.0) + inc,
+            self.exploration_max,
+        )
+        # TODO: Turn into a wrapper?
+    self.explore_map[local_to_global(y_pos, x_pos, map_n)] = min(
+        self.explore_map[local_to_global(y_pos, x_pos, map_n)] + inc,
+        self.exploration_max,
+    )
+    self.reward_explore_map[local_to_global(y_pos, x_pos, map_n)] = min(
+        self.explore_map[local_to_global(y_pos, x_pos, map_n)] + inc,
+        self.exploration_max,
+    ) * (self.map_id_scalefactor if self.scale_map_id(map_n) else 1.0)
+    # self.seen_global_coords[local_to_global(y_pos, x_pos, map_n)] = 1
+    self.seen_map_ids[map_n] = 1
+#+end_src
+
+#+begin_src python baseline.py
+class BaselineRewardEnv(RedGymEnv):
+    def get_game_state_reward(self):
+            "explore": sum(sum(tileset.values()) for tileset in self.seen_coords.values()) * 0.012,
+#+end_src
+
 * TODO Save checkpoints on positions with best cumulative rewards, and start future envs/agents from that point
 
 How do we choose what to save/run?
@@ -874,3 +928,262 @@ class ExplorationPotential:
         self
 
 **** 
+
+** Thompson Sampling
+
+*** Explain thompson sampling relevance to this code / RL
+
+This code currently uses ε-greedy exploration (random exploration with probability =exploration_rate=, else exploit best known action) rather than Thompson sampling.
+
+Thompson sampling could be relevant here to improve exploration. Instead of just tracking Q-values, you could maintain a probability distribution over the expected rewards for each state-action pair. 
+
+For example, you could:
+
+1. Track mean and variance of rewards for each state-action
+2. Model rewards as normal distributions
+3. When selecting actions, sample from these distributions and pick highest sample
+
+This would give you a more principled exploration strategy - actions with higher uncertainty would get sampled more frequently.
+
+The key would be modifying =AIAgent.select_action()= to use Thompson sampling instead of ε-greedy. You'd need to track distributional parameters in addition to Q-values.
+
+Would you like to see an example of how to implement Thompson sampling in this code?
+
+*** Yes
+
+Here's how we could modify the AIAgent class to implement Thompson sampling:
+
+#+begin_src python
+class AIAgent:
+    def __init__(self, learning_rate=0.1, discount_factor=1.00):
+        # For each state-action pair, track:
+        self.q_means = defaultdict(lambda: np.zeros(len(Actions.list())))  # Mean rewards
+        self.q_counts = defaultdict(lambda: np.zeros(len(Actions.list())))  # Number of samples 
+        self.alpha = 1.0  # Prior alpha for Beta distribution
+        self.beta = 1.0   # Prior beta for Beta distribution
+        self.learning_rate = learning_rate
+        self.discount_factor = discount_factor
+
+    def select_action(self, state):
+        hack_action = self.run_from_battle_hack(state)
+        if hack_action is not None:
+            return hack_action.value
+
+        possible_actions = Actions.list()
+        
+        # Sample from Beta distribution for each action
+        samples = []
+        for action_idx in range(len(possible_actions)):
+            count = self.q_counts[state][action_idx]
+            mean = self.q_means[state][action_idx]
+            
+            # Convert mean reward to success probability (between 0 and 1)
+            success_prob = self.normalize_reward(mean)
+            
+            # Calculate Beta distribution parameters
+            a = self.alpha + count * success_prob
+            b = self.beta + count * (1 - success_prob)
+            
+            # Sample from Beta distribution
+            sample = np.random.beta(a, b)
+            samples.append(sample)
+
+        # Choose action with highest sampled value
+        action_index = np.argmax(samples)
+        return possible_actions[action_index]
+
+    def normalize_reward(self, reward):
+        """Convert unbounded reward to [0,1] range for Beta distribution"""
+        # You'll need to tune these parameters based on your reward scale
+        max_expected_reward = 1000
+        min_expected_reward = 0
+        normalized = (reward - min_expected_reward) / (max_expected_reward - min_expected_reward)
+        return np.clip(normalized, 0, 1)
+
+    def update_q_table(self, state, action, next_state, reward):
+        """Updates mean estimates using incremental update"""
+        action_index = Actions.list().index(action)
+        
+        # Update count
+        self.q_counts[state][action_index] += 1
+        count = self.q_counts[state][action_index]
+
+        # Update mean estimate
+        current_mean = self.q_means[state][action_index]
+        best_next_value = np.max(self.q_means[next_state])
+        target = reward + self.discount_factor * best_next_value
+        
+        # Incremental update
+        new_mean = current_mean + (target - current_mean) / count
+        self.q_means[state][action_index] = new_mean
+#+end_src
+
+Key changes:
+
+1. Instead of a single Q-table, we maintain:
+   - =q_means=: Mean reward estimates 
+   - =q_counts=: Number of times each state-action was tried
+
+2. =select_action()= now uses Thompson sampling:
+   - Converts mean rewards to [0,1] probabilities
+   - Uses Beta distribution with parameters based on observed rewards
+   - Samples from Beta distribution for each action
+   - Picks action with highest sample
+
+3. =update_q_table()= updates mean estimates incrementally
+
+Advantages of this approach:
+
+- More principled exploration - automatically balances exploration/exploitation
+- Uncertainty in rewards is explicitly modeled
+- No explicit exploration rate parameter needed
+- Will focus exploration on promising but uncertain actions
+
+You may need to tune:
+- Prior parameters (alpha, beta)
+- Reward normalization range
+- Learning rate (though count-based updates may work better)
+
+Would you like me to explain any part in more detail?
+
+*** What are improvements to Thompson sampling?
+
+Here are key improvements to Thompson sampling that could be applied to this RL context:
+
+1. Particle Thompson Sampling
+#+begin_src python
+class AIAgent:
+    def __init__(self, n_particles=10):
+        self.n_particles = n_particles
+        self.particles = defaultdict(
+            lambda: [np.zeros(len(Actions.list())) for _ in range(n_particles)]
+        )
+
+    def select_action(self, state):
+        # Sample one particle randomly
+        particle_idx = np.random.randint(self.n_particles)
+        particle = self.particles[state][particle_idx]
+        return Actions.list()[np.argmax(particle)]
+#+end_src
+
+2. Bootstrapped Thompson Sampling
+#+begin_src python
+class AIAgent:
+    def __init__(self, n_bootstrap=5):
+        self.heads = [defaultdict(lambda: np.zeros(len(Actions.list()))) 
+                     for _ in range(n_bootstrap)]
+        self.masks = np.random.binomial(1, 0.5, n_bootstrap) 
+        
+    def update(self, state, action, reward):
+        for i, head in enumerate(self.heads):
+            if self.masks[i]:
+                # Update only some heads randomly
+                head[state][action] += reward
+#+end_src
+
+3. Information Directed Sampling (IDS)
+#+begin_src python
+def select_action(self, state):
+    means = self.q_means[state]
+    vars = self.q_vars[state] 
+    
+    # Calculate information gain
+    info_gain = np.sqrt(vars)
+    
+    # Calculate regret
+    best_mean = np.max(means)
+    regret = best_mean - means
+    
+    # IDS ratio
+    ratio = regret**2 / info_gain
+    return Actions.list()[np.argmin(ratio)]
+#+end_src
+
+4. Gaussian Process Thompson Sampling
+#+begin_src python
+class AIAgent:
+    def __init__(self):
+        self.gp = GaussianProcessRegressor()
+        self.X = []  # State-action pairs
+        self.y = []  # Rewards
+
+    def select_action(self, state):
+        # Sample function from GP posterior
+        f_sample = self.gp.sample_y(state)
+        return Actions.list()[np.argmax(f_sample)]
+#+end_src
+
+5. Context-Aware Thompson Sampling
+#+begin_src python
+def select_action(self, state):
+    context = self.extract_context(state)
+    
+    # Sample parameters for linear model
+    theta = np.random.multivariate_normal(
+        self.mu_posterior[state], 
+        self.sigma_posterior[state]
+    )
+    
+    # Predict rewards for each action
+    predictions = [np.dot(theta, context) for _ in Actions.list()]
+    return Actions.list()[np.argmax(predictions)]
+#+end_src
+
+The main improvements focus on:
+- Better uncertainty estimation
+- More efficient exploration
+- Handling correlations between states/actions
+- Adapting to non-stationary environments
+- Incorporating domain knowledge/context
+
+Would you like me to elaborate on any of these approaches?
+
+
+*** Elaborate on each approach, no code just explain the motivation
+
+Here's an explanation of each Thompson sampling improvement approach:
+
+1. Particle Thompson Sampling
+- Motivation: Better handles complex/multi-modal uncertainty distributions
+- Instead of maintaining single estimate, keeps multiple "particles" representing different hypotheses
+- More robust to wrong assumptions about reward distributions
+- Can capture correlations and complex patterns that simple Beta/Gaussian can't
+- Trade-off: Computational cost scales with particle count
+
+2. Bootstrapped Thompson Sampling
+- Motivation: More efficient exploration in deep RL settings
+- Maintains ensemble of value functions trained on bootstrapped subsets of data
+- Each "head" specializes in different regions of state space
+- Provides diverse exploration strategies while being computationally efficient
+- Particularly good for deep neural network value functions
+
+3. Information Directed Sampling (IDS)
+- Motivation: More principled exploration-exploitation trade-off
+- Explicitly considers both expected regret and information gain
+- Chooses actions that maximize information gain while minimizing regret
+- More sample efficient than standard Thompson sampling
+- Especially useful when exploration is expensive
+
+4. Gaussian Process Thompson Sampling
+- Motivation: Better handles continuous state/action spaces
+- Models uncertainty using Gaussian processes
+- Naturally handles correlations between similar states/actions
+- Provides principled uncertainty estimates
+- Good for smooth reward landscapes
+- Limitation: Scales poorly with data size
+
+5. Context-Aware Thompson Sampling
+- Motivation: Incorporates domain knowledge and context
+- Uses feature engineering to capture relevant state aspects
+- Can transfer learning between similar contexts
+- More efficient in high-dimensional spaces
+- Especially useful when domain expertise available
+
+The key theme across these improvements is handling the limitations of basic Thompson sampling:
+- Better uncertainty estimation
+- More efficient exploration
+- Scaling to complex/continuous spaces
+- Incorporating prior knowledge
+- Computational efficiency
+
+Would you like me to elaborate on any specific aspect?
