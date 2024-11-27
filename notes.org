@@ -1569,7 +1569,7 @@ Main challenge would be converting between the sparse state representation (Envi
 
 Would you like me to expand on any part of this approach?
 
-* How would state_to_index work
+**** How would state_to_index work
 
 For our EnvironmentState dataclass, we need to convert its fields into a format that can be used as array indices. Here's an approach:
 
@@ -1606,8 +1606,3 @@ class AIAgent:
             self.idx_counter += 1
         return self.state_to_idx[key]
 #+end_src
-
-This lets
-
-
-*** 
