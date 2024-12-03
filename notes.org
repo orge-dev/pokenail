@@ -1606,3 +1606,249 @@ class AIAgent:
             self.idx_counter += 1
         return self.state_to_idx[key]
 #+end_src
+
+* Wouldnt this state indexing be inefficient? Better way?
+
+
+Yes, creating indices for every possible state could be inefficient, especially since:
+1. Most states are never visited
+2. Many state features may not matter for decision making
+3. We'd need huge arrays to cover all combinations
+
+Better approaches:
+
+1. Feature-based state representation:
+#+begin_src python
+class AIAgent:
+    def __init__(self):
+        # Each feature gets a fixed-size embedding
+        self.position_embedding = jnp.zeros((GLOBAL_MAP_SHAPE[0], GLOBAL_MAP_SHAPE[1], 8))
+        self.menu_embedding = jnp.zeros((256, 256, 256, 4))  # Menu state -> 4D vector
+        self.item_embedding = jnp.zeros((2, 2))  # parcel/pokedex -> 2D vector
+        
+    def state_to_features(self, state: EnvironmentState):
+        """Convert state to concatenated feature vector"""
+        pos_features = self.position_embedding[state.position]
+        menu_features = self.menu_embedding[state.menu_y, state.menu_x, state.menu_selected]
+        item_features = self.item_embedding[
+            int(state.has_oaks_parcel),
+            int(state.has_pokedex)
+        ]
+        
+        return jnp.concatenate([pos_features, menu_features, item_features])
+#+end_src
+
+2. Local state representation:
+#+begin_src python
+class AIAgent:
+    def __init__(self):
+        # Only track local area around player
+        self.local_view_size = 5  # 5x5 grid around player
+        
+    def get_local_state(self, state: EnvironmentState):
+        """Get state representation relative to current position"""
+        x, y = state.position
+        # Extract 5x5 grid of visited positions around player
+        local_map = self.visited_map[
+            y-2:y+3,  # 2 tiles each direction
+            x-2:x+3
+        ]
+        # Add local features (menu state, items, etc)
+        local_features = [
+            state.menu_y / 255,  # Normalize to [0,1]
+            state.menu_x / 255,
+            state.menu_selected / 255,
+            float(state.has_oaks_parcel),
+            float(state.has_pokedex)
+        ]
+        return jnp.concatenate([local_map.flatten(), local_features])
+#+end_src
+
+3. Hash-based features:
+#+begin_src python
+def hash_state(state: EnvironmentState, num_buckets=1024):
+    """Hash state into fixed number of buckets"""
+    key = (
+        state.position[0] // 4,  # Discretize position
+        state.position[1] // 4,
+        state.menu_y // 16,     # Discretize menu state
+        state.menu_x // 16,
+        state.menu_selected,
+        int(state.has_oaks_parcel),
+        int(state.has_pokedex)
+    )
+    return hash(key) % num_buckets
+#+end_src
+
+The key ideas are:
+- Use domain knowledge to create meaningful features
+- Reduce dimensionality where possible
+- Focus on local/relevant information
+- Use fixed-size representations
+
+Would you like me to elaborate on any of these approaches?
+
+
+* Finish this
+
+Let's integrate the local state representation with JAX batched updates. This gives us a good balance of feature richness and efficiency:
+
+#+begin_src python
+import jax
+import jax.numpy as jnp
+from jax import jit, vmap
+from dataclasses import asdict
+from typing import List, Tuple
+
+class AIAgent:
+    def __init__(
+        self, 
+        learning_rate=0.1, 
+        discount_factor=0.99,
+        local_view_size=5,  # 5x5 grid around player
+        feature_dim=32      # Size of state representation
+    ):
+        self.learning_rate = learning_rate
+        self.discount_factor = discount_factor
+        self.local_view_size = local_view_size
+        
+        # Initialize visited map for full game world
+        self.visited_map = jnp.zeros(GLOBAL_MAP_SHAPE)
+        
+        # Initialize Q network weights
+        key = jax.random.PRNGKey(0)
+        self.weights = {
+            # Linear transformation of state features to action values
+            'q': jax.random.normal(key, (feature_dim, len(Actions.list())))
+        }
+
+    def state_to_features(self, state: EnvironmentState) -> jnp.ndarray:
+        """Convert a single state to feature vector"""
+        x, y = state.position
+        radius = self.local_view_size // 2
+        
+        # Extract local visited map region (with padding for edges)
+        local_map = jnp.pad(
+            self.visited_map,
+            radius,
+            mode='constant'
+        )[
+            y:y+2*radius+1,
+            x:x+2*radius+1
+        ]
+        
+        # Normalized menu state
+        menu_features = jnp.array([
+            state.menu_y / 255,
+            state.menu_x / 255,
+            state.menu_selected / 255
+        ])
+        
+        # Boolean features
+        binary_features = jnp.array([
+            state.battle,
+            state.has_oaks_parcel,
+            state.has_pokedex
+        ])
+        
+        # Combine features
+        return jnp.concatenate([
+            local_map.flatten(),
+            menu_features,
+            binary_features
+        ])
+
+    @jit
+    def batch_forward(self, states_batch: jnp.ndarray) -> jnp.ndarray:
+        """Compute Q-values for batch of state features"""
+        return jnp.dot(states_batch, self.weights['q'])
+
+    @jit
+    def batch_q_update(
+        self,
+        state_features: jnp.ndarray,    # Shape: (batch_size, feature_dim)
+        actions: jnp.ndarray,           # Shape: (batch_size,)
+        rewards: jnp.ndarray,           # Shape: (batch_size,)
+        next_state_features: jnp.ndarray # Shape: (batch_size, feature_dim)
+    ) -> None:
+        """Vectorized Q-learning update on GPU"""
+        # Current Q-values for all actions
+        current_q = self.batch_forward(state_features)
+        next_q = self.batch_forward(next_state_features)
+        
+        # Get Q-values for taken actions
+        batch_size = len(actions)
+        action_indices = jnp.arange(batch_size), actions
+        q_taken = current_q[action_indices]
+        
+        # Compute targets using next state max Q-values
+        q_next_max = jnp.max(next_q, axis=1)
+        targets = rewards + self.discount_factor * q_next_max
+        
+        # Compute gradients
+        grad = (q_taken - targets)[:, None] * state_features
+        
+        # Update weights
+        self.weights['q'] -= self.learning_rate * jnp.mean(grad, axis=0)
+
+    def train_from_replays(self, experiences: List[dict], batch_size=32, n_iterations=1000):
+        """Train from replay buffer using batched updates"""
+
+
+        
+        # Convert states to feature vectors
+        states = []
+        next_states = [] 
+        actions = []
+        rewards = []
+        
+        for exp in experiences:
+            states.append(self.state_to_features(exp['state']))
+            next_states.append(self.state_to_features(exp['next_state']))
+            actions.append(Actions.list().index(exp['action']))
+            rewards.append(exp['reward'])
+            
+        # Convert to arrays for JAX
+        states = jnp.array(states) 
+        next_states = jnp.array(next_states)
+        actions = jnp.array(actions)
+        rewards = jnp.array(rewards)
+        
+        # Training loop
+        for _ in range(n_iterations):
+            # Sample random batch
+            indices = jax.random.randint(
+                jax.random.PRNGKey(_),
+                shape=(batch_size,),
+                minval=0,
+                maxval=len(experiences)
+            )
+            
+            # Update Q-values on batch
+            self.batch_q_update(
+                states[indices],
+                actions[indices], 
+                rewards[indices],
+                next_states[indices]
+            )
+            
+            # Update visited map from state positions
+            batch_positions = jnp.array([exp['state'].position for exp in experiences])
+            self.visited_map = self.visited_map.at[batch_positions[:, 0], batch_positions[:, 1]].set(1.0)
+#+end_src
+
+This adds:
+
+1. Local state representation using a visited map window around the player
+2. Feature extraction combining local map, menu state and game state
+3. JAX batched Q-learning updates using JIT and vectorization
+4. Efficient tracking of visited locations to guide exploration
+
+The key benefits are:
+
+- Much richer state representation capturing local spatial information 
+- Fast GPU-accelerated batch updates
+- Efficient exploration by tracking visited areas
+- Clean separation between feature extraction and value learning
+
+The agent should now learn more effectively while maintaining reasonable performance. Let me know if you would like me to explain any part in more detail!
