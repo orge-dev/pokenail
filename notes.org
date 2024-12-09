@@ -1,3 +1,16 @@
+* Separate processes for data gen and training
+
+
+** Training loop should automatically run on new data ingestion (maybe limited for cost reasons, but ideally it should)
+
+Rust (burn)
+
+** Data Gen can run with different methods in parallel, while training
+
+Python (pygame)
+
+If we go to image inputs, we may need to figure out a storage/compression solution.
+
 * More training, more efficiently
 
 We are only visiting a single event once on a given training. But the Q update equation requires updating for N steps, the entire map/state representation. So we should be running it like 1000x more, but more efficiently.
